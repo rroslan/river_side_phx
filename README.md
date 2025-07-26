@@ -39,7 +39,7 @@ A comprehensive food court management system built with Phoenix LiveView, featur
 
 ## Tech Stack
 
-- **Backend**: Elixir/Phoenix 1.7.17
+- **Backend**: Elixir/Phoenix 1.8
 - **Frontend**: Phoenix LiveView
 - **Database**: PostgreSQL
 - **UI Framework**: TailwindCSS + DaisyUI
@@ -50,7 +50,6 @@ A comprehensive food court management system built with Phoenix LiveView, featur
 
 - Elixir 1.18+ and Erlang/OTP 26+
 - PostgreSQL 14+
-- Node.js 18+ (for asset compilation)
 
 ## Installation
 
@@ -70,12 +69,7 @@ mix deps.get
 mix ecto.setup
 ```
 
-4. Install Node.js dependencies:
-```bash
-cd assets && npm install && cd ..
-```
-
-5. Start the Phoenix server:
+4. Start the Phoenix server:
 ```bash
 mix phx.server
 ```
@@ -180,14 +174,10 @@ mix sobelow
 
 ### Asset Development
 
-For active development with hot-reloading:
+Phoenix 1.8 uses esbuild and Tailwind CSS without Node.js dependencies. Assets are automatically compiled when running:
 
 ```bash
-# Terminal 1 - Phoenix server
 mix phx.server
-
-# Terminal 2 - Asset watching (if needed)
-cd assets && npm run watch
 ```
 
 ## Project Structure
