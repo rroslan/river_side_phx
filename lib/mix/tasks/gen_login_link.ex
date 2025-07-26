@@ -24,7 +24,6 @@ defmodule Mix.Tasks.GenLoginLink do
     Mix.Task.run("app.start")
 
     alias RiverSide.Accounts
-    alias RiverSide.Repo
 
     case Accounts.get_user_by_email(email) do
       nil ->

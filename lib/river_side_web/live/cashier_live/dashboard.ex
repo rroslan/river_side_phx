@@ -17,7 +17,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <label tabindex="0" class="btn btn-ghost btn-circle avatar">
               <div class="w-10 rounded-full bg-primary">
                 <span class="text-xl font-bold text-primary-content">
-                  {String.first(@current_scope.user.name || @current_scope.user.email)}
+                  {String.first(@current_scope.user.email)}
                 </span>
               </div>
             </label>

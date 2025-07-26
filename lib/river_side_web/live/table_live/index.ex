@@ -228,6 +228,31 @@ defmodule RiverSideWeb.TableLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    # Check if user should be redirected based on their role
+    if socket.assigns[:current_scope] && socket.assigns.current_scope.user do
+      user = socket.assigns.current_scope.user
+
+      cond do
+        user.is_admin ->
+          {:ok, push_navigate(socket, to: ~p"/admin/dashboard")}
+
+        user.is_vendor ->
+          {:ok, push_navigate(socket, to: ~p"/vendor/dashboard")}
+
+        user.is_cashier ->
+          {:ok, push_navigate(socket, to: ~p"/cashier/dashboard")}
+
+        true ->
+          # Regular user, show tables
+          mount_tables(socket)
+      end
+    else
+      # Not logged in, show tables
+      mount_tables(socket)
+    end
+  end
+
+  defp mount_tables(socket) do
     # Initialize tables with some sample data
     tables =
       1..20
