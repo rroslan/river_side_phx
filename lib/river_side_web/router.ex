@@ -23,6 +23,12 @@ defmodule RiverSideWeb.Router do
     live_session :public,
       on_mount: [{RiverSideWeb.UserAuth, :mount_current_scope}] do
       live "/", TableLive.Index, :index
+
+      # Customer routes (no authentication required)
+      live "/customer/checkin/:table_number", CustomerLive.Checkin, :new
+      live "/customer/menu", CustomerLive.Menu, :index
+      live "/customer/cart", CustomerLive.Cart, :index
+      live "/customer/orders", CustomerLive.OrderTracking, :index
     end
   end
 
@@ -67,7 +73,6 @@ defmodule RiverSideWeb.Router do
 
       # Cashier routes
       live "/cashier/dashboard", CashierLive.Dashboard, :index
-      live "/cashier/order/new", CashierLive.OrderNew, :new
     end
   end
 

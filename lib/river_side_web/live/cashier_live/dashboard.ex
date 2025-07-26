@@ -41,42 +41,18 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
       
     <!-- Main Content -->
       <div class="container mx-auto p-6">
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-              <h2 class="card-title">New Order</h2>
-              <p>Create a new order for a customer</p>
-              <div class="card-actions justify-end">
-                <button phx-click="new_order" class="btn btn-primary">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="w-5 h-5 mr-2"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  Create Order
-                </button>
+        <!-- Today's Summary -->
+        <div class="card bg-base-100 shadow-xl mb-8">
+          <div class="card-body">
+            <h2 class="card-title">Today's Summary</h2>
+            <div class="stats stats-vertical shadow">
+              <div class="stat">
+                <div class="stat-title">Total Orders</div>
+                <div class="stat-value text-primary">{@today_stats.total_orders}</div>
               </div>
-            </div>
-          </div>
-
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-              <h2 class="card-title">Today's Summary</h2>
-              <div class="stats stats-vertical shadow">
-                <div class="stat">
-                  <div class="stat-title">Total Orders</div>
-                  <div class="stat-value text-primary">{@today_stats.total_orders}</div>
-                </div>
-                <div class="stat">
-                  <div class="stat-title">Total Sales</div>
-                  <div class="stat-value text-success">RM {@today_stats.total_sales}</div>
-                </div>
+              <div class="stat">
+                <div class="stat-title">Total Sales</div>
+                <div class="stat-value text-success">RM {@today_stats.total_sales}</div>
               </div>
             </div>
           </div>
@@ -245,11 +221,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
        |> put_flash(:error, "You are not authorized to access this page")
        |> push_navigate(to: ~p"/")}
     end
-  end
-
-  @impl true
-  def handle_event("new_order", _params, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/cashier/order/new")}
   end
 
   @impl true

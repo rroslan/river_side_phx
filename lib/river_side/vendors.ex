@@ -261,9 +261,49 @@ defmodule RiverSide.Vendors do
   Creates an order.
   """
   def create_order(attrs \\ %{}) do
-    %Order{}
-    |> Order.create_changeset(attrs)
-    |> Repo.insert()
+    Repo.transaction(fn ->
+      # Extract order items from attrs
+      {order_items_attrs, order_attrs} = Map.pop(attrs, :order_items, [])
+
+      # Create the order first
+      case %Order{}
+           |> Order.create_changeset(order_attrs)
+           |> Repo.insert() do
+        {:ok, order} ->
+          # Calculate total from order items
+          total =
+            Enum.reduce(order_items_attrs, Decimal.new("0"), fn item_attrs, acc ->
+              menu_item = get_menu_item!(item_attrs.menu_item_id)
+
+              item_attrs =
+                Map.merge(item_attrs, %{
+                  order_id: order.id,
+                  price: menu_item.price
+                })
+
+              case create_order_item(item_attrs, menu_item) do
+                {:ok, order_item} ->
+                  Decimal.add(acc, order_item.subtotal)
+
+                {:error, changeset} ->
+                  Repo.rollback(changeset)
+              end
+            end)
+
+          # Update order with total
+          case update_order_total(order, %{total_amount: total}) do
+            {:ok, order} ->
+              # Broadcast the new order
+              broadcast_order_update({:ok, get_order!(order.id)})
+
+            {:error, changeset} ->
+              Repo.rollback(changeset)
+          end
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """
@@ -418,4 +458,23 @@ defmodule RiverSide.Vendors do
   end
 
   defp broadcast_order_update(error), do: error
+
+  @doc """
+  Subscribe to updates for a specific order.
+  """
+  def subscribe_to_order_updates(order_id) do
+    Phoenix.PubSub.subscribe(RiverSide.PubSub, "order:#{order_id}")
+  end
+
+  @doc """
+  List all orders for a customer by phone and table number.
+  """
+  def list_customer_orders(phone, table_number) do
+    from(o in Order,
+      where: o.customer_phone == ^phone and o.table_number == ^table_number,
+      order_by: [desc: o.inserted_at],
+      preload: [:vendor, order_items: :menu_item]
+    )
+    |> Repo.all()
+  end
 end

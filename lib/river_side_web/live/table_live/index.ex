@@ -9,7 +9,26 @@ defmodule RiverSideWeb.TableLive.Index do
         <div class="flex-1">
           <h1 class="text-2xl font-bold text-base-content px-4">River Side Food Court</h1>
         </div>
-        <div class="flex-none">
+        <div class="flex-none gap-2">
+          <%= if @current_scope && @current_scope.user.is_admin do %>
+            <button phx-click="reset_tables" class="btn btn-warning btn-sm">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Reset All Tables
+            </button>
+          <% end %>
           <%= if @current_scope do %>
             <div class="dropdown dropdown-end">
               <label tabindex="0" class="btn btn-ghost btn-circle avatar">
@@ -294,18 +313,22 @@ defmodule RiverSideWeb.TableLive.Index do
   @impl true
   def handle_event("select_table", %{"number" => table_number}, socket) do
     table_num = String.to_integer(table_number)
-    tables = socket.assigns.tables
-    current_table = Map.get(tables, table_num, %{occupied: false})
 
-    updated_table =
-      case current_table.occupied do
-        true -> %{occupied: false, occupied_at: nil}
-        false -> %{occupied: true, occupied_at: DateTime.utc_now()}
-      end
+    # Redirect to customer check-in page
+    {:noreply, push_navigate(socket, to: ~p"/customer/checkin/#{table_num}")}
+  end
 
-    updated_tables = Map.put(tables, table_num, updated_table)
+  @impl true
+  def handle_event("reset_tables", _params, socket) do
+    # Reset all tables to unoccupied
+    tables =
+      1..20
+      |> Enum.map(fn i ->
+        {i, %{occupied: false, occupied_at: nil}}
+      end)
+      |> Map.new()
 
-    {:noreply, assign(socket, tables: updated_tables)}
+    {:noreply, assign(socket, tables: tables)}
   end
 
   defp table_status_class(nil), do: ""
