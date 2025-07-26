@@ -58,6 +58,16 @@ defmodule RiverSideWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
       live "/admin/dashboard", AdminLive.Dashboard, :index
+
+      # Vendor routes
+      live "/vendor/dashboard", VendorLive.Dashboard, :index
+      live "/vendor/profile/edit", VendorLive.ProfileEdit, :edit
+      live "/vendor/menu/new", VendorLive.MenuItemForm, :new
+      live "/vendor/menu/:id/edit", VendorLive.MenuItemForm, :edit
+
+      # Cashier routes
+      live "/cashier/dashboard", CashierLive.Dashboard, :index
+      live "/cashier/order/new", CashierLive.OrderNew, :new
     end
   end
 

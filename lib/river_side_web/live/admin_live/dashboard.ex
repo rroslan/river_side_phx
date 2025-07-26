@@ -495,7 +495,15 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
       |> Map.put("confirmed_at", DateTime.utc_now(:second))
 
     case Accounts.create_or_update_user_with_roles(user_params["email"], user_params) do
-      {:ok, _user} ->
+      {:ok, user} ->
+        # If creating a vendor user, also create vendor profile
+        if user_params["is_vendor"] == true do
+          RiverSide.Vendors.create_vendor(%{
+            name: "New Vendor",
+            user_id: user.id
+          })
+        end
+
         users = Accounts.list_users()
 
         {:noreply,
