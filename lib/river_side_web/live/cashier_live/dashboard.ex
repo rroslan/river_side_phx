@@ -548,7 +548,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     if socket.assigns.current_scope.user.is_cashier do
       # Subscribe to order updates
       Vendors.subscribe_to_all_orders()
-      IO.puts("Cashier dashboard mounted - subscribed to order updates")
 
       {:ok,
        socket
@@ -599,27 +598,15 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   def handle_event("mark_as_paid", %{"id" => order_id}, socket) do
     order = Vendors.get_order!(order_id)
 
-    IO.puts("Marking order #{order_id} as paid. Current paid status: #{order.paid}")
-
     case Vendors.mark_order_as_paid(order) do
       {:ok, updated_order} ->
-        IO.puts(
-          "Order #{order_id} marked as paid successfully. New paid status: #{updated_order.paid}"
-        )
-
         # Reload the order to ensure we have the latest data with all associations
         fresh_order = Vendors.get_order!(updated_order.id)
 
         # If order is ready, auto-complete it
-        IO.puts("Order status after marking as paid: #{fresh_order.status}")
-
         if fresh_order.status == "ready" do
-          IO.puts("Attempting to auto-complete order #{fresh_order.id}")
-
           case Vendors.update_order_status(fresh_order, %{status: "completed"}) do
             {:ok, completed_order} ->
-              IO.puts("Successfully completed order #{completed_order.id}")
-
               handle_order_completion(
                 socket,
                 completed_order,
@@ -627,7 +614,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
               )
 
             {:error, changeset} ->
-              IO.puts("Failed to complete order: #{inspect(changeset.errors)}")
               socket = load_orders(socket)
               update_modals_after_payment(socket, fresh_order)
           end
@@ -835,11 +821,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   - Maintains real-time sync between all system components
   """
   def handle_info({:order_updated, updated_order}, socket) do
-    # Log the update for debugging
-    IO.puts(
-      "Cashier received order update: Order ##{updated_order.order_number}, Status: #{updated_order.status}, Table: #{updated_order.table_number}"
-    )
-
     # Always reload orders to get fresh data
     socket = load_orders(socket) |> load_stats()
 
@@ -888,10 +869,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     # Group active orders by table
     orders_by_table = group_orders_by_table(active_orders)
 
-    IO.puts(
-      "Loaded #{length(active_orders)} active orders across #{length(orders_by_table)} tables"
-    )
-
     assign(socket,
       active_orders: active_orders,
       orders_by_table: orders_by_table,
@@ -910,13 +887,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
       all_paid = Enum.all?(table_orders, & &1.paid)
       all_ready = Enum.all?(table_orders, &(&1.status == "ready"))
-
-      # Debug logging
-      IO.puts("Table #{table_number}: Orders: #{length(table_orders)}, All paid: #{all_paid}")
-
-      Enum.each(table_orders, fn order ->
-        IO.puts("  Order #{order.order_number}: paid=#{order.paid}, status=#{order.status}")
-      end)
 
       {table_number,
        %{
@@ -962,31 +932,19 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
   defp handle_order_completion(socket, order, success_message) do
     table_number = order.table_number
-    IO.puts("Handling order completion for table #{table_number}")
 
     if Vendors.all_orders_completed_for_table?(table_number) do
-      IO.puts("All orders completed for table #{table_number}, attempting to release")
       # Auto-release the table
       case Tables.get_table_by_number(String.to_integer(table_number)) do
         nil ->
-          IO.puts("Table #{table_number} not found in database")
-
           {:noreply,
            socket
            |> put_flash(:info, success_message)
            |> load_orders()}
 
         table ->
-          IO.puts(
-            "Found table #{table_number}, attempting to release. Current occupied_at: #{inspect(table.occupied_at)}"
-          )
-
           case Tables.release_table(table) do
             {:ok, released_table} ->
-              IO.puts(
-                "Successfully released table #{table_number}. New occupied_at: #{inspect(released_table.occupied_at)}"
-              )
-
               {:noreply,
                socket
                |> put_flash(
@@ -998,8 +956,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                |> load_orders()}
 
             {:error, changeset} ->
-              IO.puts("Failed to release table #{table_number}: #{inspect(changeset.errors)}")
-
               {:noreply,
                socket
                |> put_flash(:info, success_message)
@@ -1007,8 +963,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           end
       end
     else
-      IO.puts("Not all orders completed for table #{table_number}, not releasing")
-
       {:noreply,
        socket
        |> put_flash(:info, success_message)

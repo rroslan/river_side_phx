@@ -705,10 +705,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
          |> assign(active_orders: active_orders)
          |> assign(completed_orders: completed_orders)
          |> assign(sales_stats: sales_stats)
-         |> assign(active_tab: "orders")
-         |> tap(fn socket ->
-           IO.puts("VendorDashboard mounted with active_tab: #{socket.assigns.active_tab}")
-         end)}
+         |> assign(active_tab: "orders")}
       else
         # Create a default vendor profile
         case Vendors.create_vendor(%{
@@ -758,7 +755,6 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
   @impl true
   def handle_event("set_tab", %{"tab" => tab}, socket) do
-    IO.puts("Setting active tab to: #{tab}")
     {:noreply, assign(socket, active_tab: tab)}
   end
 

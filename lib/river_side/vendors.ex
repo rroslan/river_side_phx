@@ -496,6 +496,12 @@ defmodule RiverSide.Vendors do
       {:order_updated, order}
     )
 
+    Phoenix.PubSub.broadcast(
+      RiverSide.PubSub,
+      "order:#{order.id}",
+      {:order_updated, order}
+    )
+
     result
   end
 

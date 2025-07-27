@@ -307,11 +307,6 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
           order.status in ["pending", "preparing", "ready"]
         end)
 
-      # Start a timer to refresh order status
-      if connected?(socket) and active_orders != [] do
-        :timer.send_interval(5000, self(), :refresh_orders)
-      end
-
       {:ok,
        socket
        |> assign(customer_info: customer_info)
@@ -330,31 +325,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   end
 
   @impl true
-  def handle_info(:refresh_orders, socket) do
-    # Refresh orders from database
-    orders =
-      Vendors.list_customer_orders(
-        socket.assigns.customer_info.phone,
-        socket.assigns.customer_info.table_number
-      )
-
-    active_orders =
-      Enum.filter(orders, fn order ->
-        order.status in ["pending", "preparing", "ready"]
-      end)
-
-    {:noreply,
-     socket
-     |> assign(active_orders: active_orders)
-     |> assign(completed_orders: [])}
-  end
-
-  @impl true
   def handle_info({:order_updated, updated_order}, socket) do
-    IO.puts(
-      "Customer tracking received order update: Order ##{updated_order.order_number}, Status: #{updated_order.status}, Paid: #{updated_order.paid}"
-    )
-
     # Update the specific order in our lists
     active_orders =
       Enum.map(socket.assigns.active_orders, fn order ->
@@ -366,8 +337,6 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
       Enum.filter(active_orders, fn order ->
         order.status in ["pending", "preparing", "ready"]
       end)
-
-    IO.puts("After update - Active orders: #{length(new_active)}")
 
     {:noreply,
      socket
