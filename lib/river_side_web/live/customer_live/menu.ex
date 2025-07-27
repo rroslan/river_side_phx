@@ -96,90 +96,92 @@ defmodule RiverSideWeb.CustomerLive.Menu do
       </div>
 
       <div class="container mx-auto p-4">
-        <!-- Vendor Tabs -->
-        <div class="tabs tabs-boxed mb-6">
-          <%= for vendor <- @vendors do %>
-            <button
-              class={"tab #{if @selected_vendor_id == vendor.id, do: "tab-active"}"}
-              phx-click="select_vendor"
-              phx-value-id={vendor.id}
-            >
-              {vendor.name}
-            </button>
-          <% end %>
+        <!-- Category Filter -->
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+          <button
+            class={"btn btn-sm #{if @selected_category == "all", do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="filter_category"
+            phx-value-category="all"
+          >
+            All Items
+          </button>
+          <button
+            class={"btn btn-sm #{if @selected_category == "food", do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="filter_category"
+            phx-value-category="food"
+          >
+            Food
+          </button>
+          <button
+            class={"btn btn-sm #{if @selected_category == "drinks", do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="filter_category"
+            phx-value-category="drinks"
+          >
+            Drinks
+          </button>
         </div>
         
-    <!-- Category Filter -->
-        <%= if @selected_vendor_id do %>
-          <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button
-              class={"btn btn-sm #{if @selected_category == "all", do: "btn-primary", else: "btn-ghost"}"}
-              phx-click="filter_category"
-              phx-value-category="all"
-            >
-              All
-            </button>
-            <button
-              class={"btn btn-sm #{if @selected_category == "food", do: "btn-primary", else: "btn-ghost"}"}
-              phx-click="filter_category"
-              phx-value-category="food"
-            >
-              Food
-            </button>
-            <button
-              class={"btn btn-sm #{if @selected_category == "drinks", do: "btn-primary", else: "btn-ghost"}"}
-              phx-click="filter_category"
-              phx-value-category="drinks"
-            >
-              Drinks
-            </button>
-          </div>
-        <% end %>
-        
-    <!-- Menu Items Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <%= for item <- @filtered_items do %>
-            <div class="card bg-base-100 shadow-lg">
-              <%= if item.image_url do %>
-                <figure>
-                  <img src={item.image_url} alt={item.name} class="w-48 h-48 mx-auto object-cover" />
-                </figure>
-              <% end %>
-              <div class="card-body">
-                <h3 class="card-title text-lg">{item.name}</h3>
-                <%= if item.description do %>
-                  <p class="text-sm text-base-content/70">{item.description}</p>
-                <% end %>
-                <div class="flex justify-between items-center mt-4">
-                  <span class="text-xl font-bold">RM {format_currency(item.price)}</span>
-                  <div class="flex items-center gap-2">
-                    <%= if Map.get(@cart_items, item.id, 0) > 0 do %>
-                      <button
-                        phx-click="remove_from_cart"
-                        phx-value-id={item.id}
-                        class="btn btn-sm btn-circle"
-                      >
-                        -
-                      </button>
-                      <span class="font-bold">{Map.get(@cart_items, item.id, 0)}</span>
+    <!-- Menu Items by Vendor -->
+        <%= for vendor <- @vendors do %>
+          <% vendor_items = Enum.filter(@filtered_items, &(&1.vendor_id == vendor.id)) %>
+          <%= if vendor_items != [] do %>
+            <div class="mb-8">
+              <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                <span class="badge badge-primary badge-lg">{vendor.name}</span>
+                <span class="text-sm text-base-content/60">
+                  {length(vendor_items)} items
+                </span>
+              </h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <%= for item <- vendor_items do %>
+                  <div class="card bg-base-100 shadow-lg">
+                    <%= if item.image_url do %>
+                      <figure>
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          class="w-48 h-48 mx-auto object-cover"
+                        />
+                      </figure>
                     <% end %>
-                    <button
-                      phx-click="add_to_cart"
-                      phx-value-id={item.id}
-                      class="btn btn-sm btn-circle btn-primary"
-                    >
-                      +
-                    </button>
+                    <div class="card-body">
+                      <h3 class="card-title text-lg">{item.name}</h3>
+                      <%= if item.description do %>
+                        <p class="text-sm text-base-content/70">{item.description}</p>
+                      <% end %>
+                      <div class="flex justify-between items-center mt-4">
+                        <span class="text-xl font-bold">RM {format_currency(item.price)}</span>
+                        <div class="flex items-center gap-2">
+                          <%= if Map.get(@cart_items, item.id, 0) > 0 do %>
+                            <button
+                              phx-click="remove_from_cart"
+                              phx-value-id={item.id}
+                              class="btn btn-sm btn-circle"
+                            >
+                              -
+                            </button>
+                            <span class="font-bold">{Map.get(@cart_items, item.id, 0)}</span>
+                          <% end %>
+                          <button
+                            phx-click="add_to_cart"
+                            phx-value-id={item.id}
+                            class="btn btn-sm btn-circle btn-primary"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                <% end %>
               </div>
             </div>
           <% end %>
-        </div>
+        <% end %>
 
         <%= if @filtered_items == [] do %>
           <div class="text-center py-12">
-            <p class="text-base-content/60">No items available in this category</p>
+            <p class="text-base-content/60">No items available</p>
           </div>
         <% end %>
       </div>
@@ -245,10 +247,13 @@ defmodule RiverSideWeb.CustomerLive.Menu do
         |> Map.new()
 
       vendors = Vendors.list_active_vendors()
-      selected_vendor_id = if vendors != [], do: hd(vendors).id, else: nil
 
-      menu_items =
-        if selected_vendor_id, do: Vendors.list_available_menu_items(selected_vendor_id), else: []
+      # Load all menu items from all vendors
+      all_menu_items =
+        vendors
+        |> Enum.flat_map(fn vendor ->
+          Vendors.list_available_menu_items(vendor.id)
+        end)
 
       # Calculate initial cart totals for ALL items in cart
       {count, total} = calculate_all_cart_totals(cart_items)
@@ -258,30 +263,15 @@ defmodule RiverSideWeb.CustomerLive.Menu do
        |> assign(customer_info: customer_info)
        |> assign(table: table)
        |> assign(vendors: vendors)
-       |> assign(selected_vendor_id: selected_vendor_id)
-       |> assign(selected_category: "all")
-       |> assign(menu_items: menu_items)
-       |> assign(filtered_items: menu_items)
+       |> assign(menu_items: all_menu_items)
+       |> assign(filtered_items: all_menu_items)
        |> assign(cart_items: cart_items)
        |> assign(cart_count: count)
-       |> assign(cart_total: total)}
+       |> assign(cart_total: total)
+       |> assign(selected_category: "all")}
     else
       {:ok, push_navigate(socket, to: ~p"/")}
     end
-  end
-
-  @impl true
-  def handle_event("select_vendor", %{"id" => vendor_id}, socket) do
-    vendor_id = String.to_integer(vendor_id)
-    menu_items = Vendors.list_available_menu_items(vendor_id)
-
-    {:noreply,
-     socket
-     |> assign(selected_vendor_id: vendor_id)
-     |> assign(menu_items: menu_items)
-     |> assign(filtered_items: menu_items)
-     |> recalculate_all_cart_totals()
-     |> assign(selected_category: "all")}
   end
 
   @impl true
@@ -293,10 +283,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
         Enum.filter(socket.assigns.menu_items, &(&1.category == category))
       end
 
-    {:noreply,
-     socket
-     |> assign(selected_category: category)
-     |> assign(filtered_items: filtered_items)}
+    {:noreply, assign(socket, filtered_items: filtered_items, selected_category: category)}
   end
 
   @impl true
