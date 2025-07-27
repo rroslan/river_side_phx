@@ -392,13 +392,14 @@ defmodule RiverSideWeb.CustomerLive.Menu do
   defp calculate_all_cart_totals(cart_items) do
     Enum.reduce(cart_items, {0, Decimal.new("0")}, fn {item_id, qty}, {count, total} ->
       # Fetch item from database to get current price
-      case Vendors.get_menu_item(item_id) do
-        nil ->
+      try do
+        item = Vendors.get_menu_item!(item_id)
+        item_total = Decimal.mult(item.price, qty)
+        {count + qty, Decimal.add(total, item_total)}
+      rescue
+        Ecto.NoResultsError ->
+          # Item no longer exists, skip it
           {count, total}
-
-        item ->
-          item_total = Decimal.mult(item.price, qty)
-          {count + qty, Decimal.add(total, item_total)}
       end
     end)
   end
