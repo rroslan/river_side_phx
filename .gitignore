@@ -35,3 +35,36 @@ river_side-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.envrc
+*.secret.exs
+config/prod.secret.exs
+config/*.secret.exs
+
+# Private keys and certificates
+*.pem
+*.key
+*.cert
+*.crt
+
+# Database dumps
+*.dump
+*.sql
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploaded files (keep directory structure but not files)
+/priv/static/uploads/*
+!/priv/static/uploads/.gitkeep
