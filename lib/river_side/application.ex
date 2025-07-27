@@ -1,7 +1,35 @@
 defmodule RiverSide.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
+  @moduledoc """
+  The RiverSide application supervisor.
+
+  This module implements the Application behaviour and starts the
+  supervision tree for the River Side Food Court system. It manages
+  all the core services required for the application to function.
+
+  ## Supervision Tree
+
+  The application starts the following children in order:
+
+  1. **Telemetry** - Metrics and monitoring infrastructure
+  2. **Repo** - Database connection pool management
+  3. **DNSCluster** - Node clustering for distributed deployments
+  4. **PubSub** - Real-time messaging between processes and LiveViews
+  5. **Endpoint** - HTTP server and WebSocket connections
+
+  ## Configuration
+
+  The application supports runtime configuration changes through
+  the `config_change/3` callback, which propagates changes to the
+  Phoenix endpoint.
+
+  ## Real-time Features
+
+  The PubSub system enables real-time updates for:
+  - Order status changes across vendor and customer views
+  - Table availability updates
+  - Menu item changes
+  - System-wide notifications
+  """
 
   use Application
 

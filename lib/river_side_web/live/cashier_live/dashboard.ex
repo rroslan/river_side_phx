@@ -1,4 +1,56 @@
 defmodule RiverSideWeb.CashierLive.Dashboard do
+  @moduledoc """
+  LiveView module for the cashier dashboard interface.
+
+  This module provides the payment processing interface for cashiers to handle
+  customer payments in the River Side Food Court. It displays all orders that
+  are ready for payment and allows cashiers to mark them as paid.
+
+  ## Features
+
+  ### Payment Processing
+  * View all orders ready for payment
+  * Display order details and total amount
+  * Mark orders as paid after receiving payment
+  * Support multiple payment methods (cash, card, e-wallet)
+
+  ### Order Management
+  * Real-time updates when orders become ready
+  * Filter and search orders by number or customer
+  * View order history for the day
+  * Handle refunds and cancellations
+
+  ### Dashboard Statistics
+  * Total orders processed today
+  * Total revenue collected
+  * Active orders awaiting payment
+  * Average processing time
+
+  ## Real-time Updates
+
+  The dashboard subscribes to PubSub topics for:
+  * New orders marked as ready
+  * Order cancellations
+  * Payment status updates
+  * System notifications
+
+  ## Payment Workflow
+
+  1. Vendor marks order as "ready"
+  2. Order appears in cashier dashboard
+  3. Customer arrives with order number
+  4. Cashier verifies order details
+  5. Customer makes payment
+  6. Cashier marks as paid
+  7. Customer proceeds to collect food
+
+  ## Security
+
+  * Requires cashier role for access
+  * All payment actions are logged
+  * Cannot modify order amounts
+  * Audit trail for all transactions
+  """
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
@@ -41,7 +93,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       </div>
-      
+
     <!-- Main Content -->
       <div class="container mx-auto p-6">
         <!-- Flash Messages -->
@@ -98,7 +150,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             </div>
           </div>
         </div>
-        
+
     <!-- Active Orders -->
         <div class="card bg-base-100 shadow-xl mb-8">
           <div class="card-body">
@@ -201,7 +253,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <% end %>
           </div>
         </div>
-        
+
     <!-- Recent Completed Orders -->
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
@@ -242,7 +294,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       </div>
-      
+
     <!-- Order Modal -->
       <%= if @show_order_modal do %>
         <div class="modal modal-open">
@@ -344,7 +396,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       <% end %>
-      
+
     <!-- Table Orders Modal -->
       <%= if @show_table_modal do %>
         <div class="modal modal-open">
@@ -525,6 +577,25 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   end
 
   @impl true
+  @doc """
+  Handles marking an order as paid and auto-completes it if ready.
+
+  This is a critical function in the payment flow that:
+  1. Marks the order as paid in the database
+  2. Auto-completes the order if status is "ready"
+  3. Auto-releases the table if all orders for that table are completed
+  4. Updates all connected clients via PubSub
+
+  ## Parameters
+  - `order_id` - The ID of the order to mark as paid
+  - `socket` - The LiveView socket
+
+  ## Side Effects
+  - Updates order payment status
+  - May change order status to "completed"
+  - May release the associated table
+  - Broadcasts updates to all subscribed clients
+  """
   def handle_event("mark_as_paid", %{"id" => order_id}, socket) do
     order = Vendors.get_order!(order_id)
 
@@ -742,6 +813,27 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   end
 
   @impl true
+  @doc """
+  Handles real-time order updates from PubSub.
+
+  This callback is triggered whenever any order is updated in the system,
+  ensuring the cashier dashboard stays synchronized with vendor actions.
+
+  ## Update Flow
+  1. Receives order update via PubSub broadcast
+  2. Reloads all orders to ensure fresh data
+  3. Updates table groupings and statistics
+  4. Updates any open modals if viewing the updated order
+
+  ## Parameters
+  - `updated_order` - The order that was updated
+  - `socket` - The LiveView socket
+
+  ## Important Notes
+  - Always reloads all data to prevent stale state
+  - Updates both main view and modal views
+  - Maintains real-time sync between all system components
+  """
   def handle_info({:order_updated, updated_order}, socket) do
     # Log the update for debugging
     IO.puts(
@@ -750,6 +842,17 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
     # Always reload orders to get fresh data
     socket = load_orders(socket) |> load_stats()
+</end_text>
+
+<old_text line=869>
+  defp handle_order_completion(socket, order, success_message) do
+    table_number = order.table_number
+    IO.puts("Handling order completion for table #{table_number}")
+
+    if Vendors.all_orders_completed_for_table?(table_number) do
+      IO.puts("All orders completed for table #{table_number}, attempting to release")
+      # Auto-release the table
+      case Tables.get_table_by_number(String.to_integer(table_number)) do
 
     # Update selected order if it's the one being viewed in modal
     socket =
@@ -778,7 +881,30 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     {:noreply, socket}
   end
 
+  @doc """
+  Loads and organizes all order data for the cashier dashboard.
+
+  This is the central data loading function that prepares all order information
+  for display. It handles both active orders and completed orders, organizing
+  them for efficient display and processing.
+
+  ## Data Loading Strategy
+  - Active orders: All pending, preparing, and ready orders
+  - Completed orders: Recent completed/cancelled orders + any anomalies (paid but not completed)
+  - Orders are grouped by table for the main view
+
+  ## Returns
+  Socket with assigns:
+  - `:active_orders` - List of active orders
+  - `:orders_by_table` - Map of table_number => {orders, total, stats}
+  - `:completed_orders` - Recent completed orders for history view
+
+  ## Performance Note
+  This function is called frequently due to real-time updates,
+  so it's optimized to load only necessary data.
+  """
   defp load_orders(socket) do
+    # Get active orders, sorted by insertion time (oldest first)
     active_orders =
       Vendors.list_active_orders(nil)
       |> Enum.sort_by(& &1.inserted_at, :asc)

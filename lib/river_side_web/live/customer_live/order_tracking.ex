@@ -1,4 +1,49 @@
 defmodule RiverSideWeb.CustomerLive.OrderTracking do
+  @moduledoc """
+  LiveView module for customer order tracking interface.
+
+  This module provides real-time order status tracking for customers after
+  they've placed orders. It shows all active orders and their current status,
+  allowing customers to know when to pay and collect their food.
+
+  ## Features
+
+  ### Order Status Tracking
+  * Real-time status updates via PubSub
+  * Visual status indicators and progress
+  * Estimated completion times
+  * Order details and vendor information
+
+  ### Multi-Order Support
+  * Track orders from multiple vendors
+  * Consolidated view of all active orders
+  * Individual order status per vendor
+  * Total amount for all orders
+
+  ## Order Status Flow
+
+  1. **Pending** - Order submitted, awaiting vendor
+  2. **Preparing** - Vendor accepted and preparing
+  3. **Ready** - Food ready, proceed to payment
+  4. **Paid** - Payment complete, collect food
+  5. **Completed** - Order fulfilled
+  6. **Cancelled** - Order cancelled
+
+  ## Real-time Updates
+
+  Subscribes to customer-specific PubSub topics:
+  * Order status changes
+  * Preparation time updates
+  * Cancellation notifications
+  * Payment confirmations
+
+  ## User Actions
+
+  * View order details
+  * Navigate to new order
+  * Return to menu
+  * Check out when done
+  """
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors

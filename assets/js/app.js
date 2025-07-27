@@ -1,7 +1,19 @@
+/**
+ * @fileoverview Main JavaScript entry point for River Side Food Court application.
+ *
+ * This file initializes Phoenix LiveView, sets up WebSocket connections,
+ * configures hooks for interactive components, and manages client-side
+ * features like modal handling and progress indicators.
+ *
+ * @module app
+ */
+
+// Phoenix Channels Configuration
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.
 // import "./user_socket.js"
 
+// Dependency Management
 // You can include dependencies in two ways.
 //
 // The simplest option is to put them in assets/vendor and
@@ -19,22 +31,44 @@
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html";
-// Establish Phoenix Socket and LiveView configuration.
+
+/**
+ * LiveView and WebSocket Configuration
+ * Establishes real-time communication between client and server
+ */
 import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import { hooks as colocatedHooks } from "phoenix-colocated/river_side";
 import topbar from "../vendor/topbar";
 import ImageCropper from "./image_cropper";
 
+/**
+ * CSRF Token for Security
+ * Extracted from meta tag to ensure secure form submissions
+ */
 const csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
+
+/**
+ * LiveView Hooks Registry
+ * Combines built-in hooks with custom components
+ *
+ * @property {Object} ImageCropper - Hook for handling image upload and cropping
+ */
 const Hooks = {
   ...colocatedHooks,
   ImageCropper: ImageCropper,
 };
 
-// Handle modal events
+/**
+ * Modal Event Handlers
+ * Manages opening and closing of modal dialogs triggered by server
+ *
+ * These events are dispatched by LiveView when modal operations are needed:
+ * - phx:open_modal - Opens a modal with specified ID
+ * - phx:close_modal - Closes a modal with specified ID
+ */
 window.addEventListener("phx:open_modal", (e) => {
   const modal = document.getElementById(e.detail.id);
   if (modal) modal.showModal();
@@ -45,44 +79,83 @@ window.addEventListener("phx:close_modal", (e) => {
   if (modal) modal.close();
 });
 
+/**
+ * LiveSocket Configuration
+ * Establishes WebSocket connection for real-time features
+ *
+ * @param {string} "/live" - WebSocket endpoint
+ * @param {Socket} Socket - Phoenix Socket constructor
+ * @param {Object} options - Configuration options
+ * @param {number} options.longPollFallbackMs - Fallback to HTTP long polling after 2.5s
+ * @param {Object} options.params - Parameters sent with each request
+ * @param {Object} options.hooks - Custom hooks for LiveView components
+ */
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: { _csrf_token: csrfToken },
   hooks: Hooks,
 });
 
-// Show progress bar on live navigation and form submits
+/**
+ * Progress Bar Configuration
+ * Shows loading indicator during page transitions and form submissions
+ *
+ * The progress bar provides visual feedback for:
+ * - LiveView navigation between pages
+ * - Form submissions that take time
+ * - Server-side operations
+ */
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
 
-// connect if there are any LiveViews on the page
+/**
+ * LiveSocket Connection
+ * Initiates WebSocket connection if LiveView components are present
+ */
 liveSocket.connect();
 
-// expose liveSocket on window for web console debug logs and latency simulation:
-// >> liveSocket.enableDebug()
-// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
-// >> liveSocket.disableLatencySim()
+/**
+ * Debug Tools
+ * Exposes liveSocket globally for debugging in browser console
+ *
+ * Available commands:
+ * - liveSocket.enableDebug() - Enable debug logging
+ * - liveSocket.enableLatencySim(1000) - Simulate network latency
+ * - liveSocket.disableLatencySim() - Disable latency simulation
+ */
 window.liveSocket = liveSocket;
 
-// The lines below enable quality of life phoenix_live_reload
-// development features:
-//
-//     1. stream server logs to the browser console
-//     2. click on elements to jump to their definitions in your code editor
-//
+/**
+ * Development Tools (Development Environment Only)
+ *
+ * Phoenix Live Reload provides developer productivity features:
+ * 1. Stream server logs to browser console
+ * 2. Click on elements to jump to code definitions
+ *
+ * These features are only enabled in development mode for security
+ * and performance reasons.
+ */
 if (process.env.NODE_ENV === "development") {
   window.addEventListener(
     "phx:live_reload:attached",
     ({ detail: reloader }) => {
-      // Enable server log streaming to client.
-      // Disable with reloader.disableServerLogs()
+      /**
+       * Server Log Streaming
+       * Streams Elixir server logs directly to browser console
+       * Useful for debugging without switching windows
+       */
       reloader.enableServerLogs();
 
-      // Open configured PLUG_EDITOR at file:line of the clicked element's HEEx component
-      //
-      //   * click with "c" key pressed to open at caller location
-      //   * click with "d" key pressed to open at function component definition location
+      /**
+       * Code Navigation Feature
+       * Click on elements with modifier keys to open in editor:
+       *
+       * @key {c} - Open at caller location (where component is used)
+       * @key {d} - Open at definition location (where component is defined)
+       *
+       * Requires PLUG_EDITOR environment variable to be configured
+       */
       let keyDown;
       window.addEventListener("keydown", (e) => (keyDown = e.key));
       window.addEventListener("keyup", (e) => (keyDown = null));
@@ -102,6 +175,7 @@ if (process.env.NODE_ENV === "development") {
         true,
       );
 
+      // Expose reloader for manual control if needed
       window.liveReloader = reloader;
     },
   );

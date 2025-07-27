@@ -1,10 +1,69 @@
 defmodule RiverSideWeb.CustomerLive.Menu do
+  @moduledoc """
+  LiveView module for the customer menu browsing interface.
+
+  This module provides the main interface for customers to browse vendor menus,
+  add items to their cart, and place orders. It supports multi-vendor ordering
+  within a single session.
+
+  ## Features
+
+  ### Menu Browsing
+  * Tabbed interface for switching between vendors
+  * Category-based menu organization
+  * Real-time availability updates
+  * Image previews for menu items
+
+  ### Cart Management
+  * Add/remove items from cart
+  * Adjust quantities
+  * Multi-vendor cart support
+  * Persistent cart during session
+
+  ### Order Creation
+  * Review cart before ordering
+  * Add special instructions
+  * Place orders to multiple vendors
+  * Redirect to order tracking
+
+  ## Session Management
+
+  The cart is stored in the table record, allowing customers to:
+  * Browse multiple vendors before ordering
+  * Leave and return without losing cart
+  * Share table with others using same session
+
+  ## Real-time Updates
+
+  * Menu item availability changes
+  * Price updates
+  * Vendor status changes
+  * Cart synchronization
+
+  ## Security
+
+  * Session validated through table check-in
+  * Cart data sanitized before storage
+  * Order creation validates all items
+  """
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
   alias RiverSide.Tables
 
   @impl true
+  @doc """
+  Renders the customer menu interface.
+
+  The interface includes:
+  * Navigation bar with table number and exit option
+  * Vendor selection tabs
+  * Menu items grid with categories
+  * Floating cart button with item count
+  * Cart sidebar for review and checkout
+
+  Uses responsive design for mobile and tablet devices.
+  """
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-base-200 pb-20">

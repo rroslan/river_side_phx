@@ -1,4 +1,48 @@
 defmodule RiverSideWeb.CustomerLive.Checkin do
+  @moduledoc """
+  LiveView module for customer table check-in interface.
+
+  This module handles the initial customer interaction when they scan
+  a QR code on their table. It manages the check-in process and establishes
+  the customer session for ordering.
+
+  ## Check-in Flow
+
+  1. Customer scans QR code on table
+  2. System displays check-in form
+  3. Customer enters phone number (required)
+  4. Customer enters name (optional)
+  5. System validates and occupies table
+  6. Redirects to menu interface
+
+  ## Features
+
+  ### Table Management
+  * Validates table availability
+  * Prevents double occupation
+  * Associates customer with table
+  * Initializes shopping cart
+
+  ### Customer Information
+  * Phone number for order tracking
+  * Optional name for personalization
+  * Session persistence during dining
+  * Data cleared on checkout
+
+  ## Validation
+
+  * Phone number required for check-in
+  * Table must be available
+  * Valid table number from QR code
+  * Session security checks
+
+  ## Error Handling
+
+  * Table already occupied
+  * Invalid table number
+  * System errors gracefully handled
+  * User-friendly error messages
+  """
   use RiverSideWeb, :live_view
 
   alias RiverSide.Tables

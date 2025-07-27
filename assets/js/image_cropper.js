@@ -1,11 +1,61 @@
-// Image Cropper Hook for Phoenix LiveView
-// Uses the browser's built-in Canvas API for image manipulation
-
+/**
+ * ImageCropper Hook for Phoenix LiveView
+ *
+ * A custom image cropping tool that integrates with Phoenix LiveView to provide
+ * client-side image manipulation capabilities. Uses the browser's built-in Canvas API
+ * for image processing without external dependencies.
+ *
+ * @module ImageCropper
+ *
+ * @example
+ * // In your LiveView template:
+ * <div id="image-cropper" phx-hook="ImageCropper">
+ *   <input type="file" data-image-input accept="image/*" />
+ *   <canvas data-crop-canvas></canvas>
+ *   <button data-crop-button>Crop Image</button>
+ * </div>
+ *
+ * @property {HTMLElement} el - The root element with the hook attached
+ * @property {HTMLCanvasElement} canvas - The canvas element for drawing the image and crop area
+ * @property {CanvasRenderingContext2D} ctx - The 2D rendering context for the canvas
+ * @property {HTMLInputElement} imageInput - File input element for image selection
+ * @property {HTMLButtonElement} cropButton - Button to trigger the crop action
+ * @property {Image} image - The loaded image object
+ * @property {Object} cropData - Current crop area configuration
+ * @property {number} cropData.x - X coordinate of crop area
+ * @property {number} cropData.y - Y coordinate of crop area
+ * @property {number} cropData.width - Width of crop area
+ * @property {number} cropData.height - Height of crop area
+ * @property {number} cropData.aspectRatio - Aspect ratio constraint (width/height)
+ */
 export default {
+  /**
+   * Lifecycle callback - Called when the hook is mounted to the DOM
+   *
+   * Initializes the image cropper by:
+   * 1. Setting up DOM element references
+   * 2. Creating bound event handlers for proper cleanup
+   * 3. Initializing crop data with defaults
+   * 4. Setting up event listeners for user interaction
+   *
+   * @returns {void}
+   */
+  /**
+   * Lifecycle callback - Called when the hook is mounted to the DOM
+   *
+   * Initializes the image cropper by:
+   * 1. Setting up DOM element references
+   * 2. Creating bound event handlers for proper cleanup
+   * 3. Initializing crop data with defaults
+   * 4. Setting up event listeners for user interaction
+   *
+   * @returns {void}
+   */
   mounted() {
     console.log("ImageCropper hook mounted");
 
     // Store bound event handlers so we can remove them later
+    // This is crucial for proper memory management and preventing duplicate listeners
     this.handleImageSelectBound = (e) => this.handleImageSelect(e);
     this.handleMouseDownBound = (e) => this.handleMouseDown(e);
     this.handleMouseMoveBound = (e) => this.handleMouseMove(e);
@@ -80,6 +130,17 @@ export default {
     });
   },
 
+  /**
+   * Sets up mouse and touch event listeners on the canvas
+   *
+   * This method ensures clean event handling by:
+   * 1. Removing any existing listeners to prevent duplicates
+   * 2. Adding fresh listeners for mouse and touch interactions
+   * 3. Setting up window-level listeners for drag operations that extend outside the canvas
+   *
+   * @private
+   * @returns {void}
+   */
   setupCanvasListeners() {
     // Remove any existing listeners first
     this.canvas.removeEventListener("mousedown", this.handleMouseDownBound);
@@ -108,6 +169,17 @@ export default {
     window.addEventListener("mouseup", this.handleMouseUpBound);
   },
 
+  /**
+   * Handles file input change event when user selects an image
+   *
+   * Validates the selected file is an image, reads it using FileReader,
+   * and loads it into the canvas for cropping.
+   *
+   * @param {Event} e - The change event from the file input
+   * @returns {void}
+   *
+   * @fires image_loaded - Pushed to server with image dimensions when image loads successfully
+   */
   handleImageSelect(e) {
     console.log("Image selected", e.target.files);
     const file = e.target.files[0];
@@ -140,6 +212,16 @@ export default {
     reader.readAsDataURL(file);
   },
 
+  /**
+   * Configures canvas dimensions and initial crop area
+   *
+   * Scales the canvas to fit within the container while maintaining the image's
+   * aspect ratio. Sets up initial crop area centered on the image with maximum
+   * size that fits within bounds.
+   *
+   * @private
+   * @returns {void}
+   */
   setupCanvas() {
     // Set canvas size to fit container while maintaining aspect ratio
     const containerWidth = this.cropperContainer.offsetWidth;
@@ -253,6 +335,17 @@ export default {
     ];
   },
 
+  /**
+   * Handles mouse down events on the canvas
+   *
+   * Determines if the user clicked on:
+   * 1. A resize handle - initiates resize mode
+   * 2. Inside the crop area - initiates drag mode
+   * 3. Outside the crop area - no action
+   *
+   * @param {MouseEvent} e - The mouse down event
+   * @returns {void}
+   */
   handleMouseDown(e) {
     e.preventDefault();
     const rect = this.canvas.getBoundingClientRect();
@@ -495,6 +588,14 @@ export default {
     );
   },
 
+  /**
+   * Lifecycle callback - Called when the hook is removed from the DOM
+   *
+   * Performs cleanup by removing all event listeners to prevent memory leaks
+   * and ensure proper garbage collection of resources.
+   *
+   * @returns {void}
+   */
   destroyed() {
     // Clean up event listeners
     if (this.imageInput) {

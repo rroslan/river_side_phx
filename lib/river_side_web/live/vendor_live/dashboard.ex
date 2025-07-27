@@ -1,4 +1,53 @@
 defmodule RiverSideWeb.VendorLive.Dashboard do
+  @moduledoc """
+  LiveView module for the vendor dashboard interface.
+
+  This module provides the main control panel for vendors to manage their
+  food stall operations in the River Side Food Court. It offers real-time
+  order management, menu control, and business analytics.
+
+  ## Features
+
+  ### Order Management
+  * Real-time order notifications via PubSub
+  * Order status updates (accept, prepare, complete, cancel)
+  * Visual order queue with status indicators
+  * Order history and filtering
+
+  ### Menu Management
+  * Add, edit, and remove menu items
+  * Toggle item availability
+  * Manage prices and descriptions
+  * Upload and crop item images
+
+  ### Business Operations
+  * View daily sales statistics
+  * Track order completion times
+  * Monitor customer satisfaction
+  * Manage vendor profile
+
+  ## Real-time Updates
+
+  The dashboard subscribes to vendor-specific PubSub topics for:
+  * New incoming orders
+  * Order status changes
+  * Menu item updates
+  * System notifications
+
+  ## Order Lifecycle
+
+  1. **Pending** - New order received, awaiting vendor action
+  2. **Preparing** - Vendor accepted and is preparing the order
+  3. **Ready** - Order prepared and ready for pickup
+  4. **Completed** - Customer collected the order
+  5. **Cancelled** - Order cancelled by vendor or customer
+
+  ## Security
+
+  * Requires vendor role for access
+  * Vendors can only see/modify their own orders
+  * All actions are scoped to the vendor's account
+  """
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
