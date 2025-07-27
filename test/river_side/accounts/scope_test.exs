@@ -2,8 +2,6 @@ defmodule RiverSide.Accounts.ScopeTest do
   use RiverSide.DataCase, async: true
 
   alias RiverSide.Accounts.Scope
-  alias RiverSide.Accounts.User
-  alias RiverSide.Vendors
 
   import RiverSide.AccountsFixtures
   import RiverSide.VendorsFixtures
@@ -24,7 +22,7 @@ defmodule RiverSide.Accounts.ScopeTest do
 
     test "creates vendor scope with preloaded vendor data" do
       user = user_fixture(%{is_vendor: true})
-      vendor = vendor_fixture(user_id: user.id)
+      vendor = vendor_fixture(%{user_id: user.id})
 
       scope = Scope.for_user(user)
 
@@ -142,7 +140,7 @@ defmodule RiverSide.Accounts.ScopeTest do
 
     test "vendor has vendor-specific permissions" do
       user = user_fixture(%{is_vendor: true})
-      vendor = vendor_fixture(user_id: user.id)
+      _vendor = vendor_fixture(%{user_id: user.id})
       scope = Scope.for_user(user)
 
       assert Scope.can?(scope, :view_own_menu)
@@ -203,7 +201,7 @@ defmodule RiverSide.Accounts.ScopeTest do
   describe "owns_vendor?/2" do
     test "vendor owns their own vendor" do
       user = user_fixture(%{is_vendor: true})
-      vendor = vendor_fixture(user_id: user.id)
+      vendor = vendor_fixture(%{user_id: user.id})
       scope = Scope.for_user(user)
 
       assert Scope.owns_vendor?(scope, vendor.id)
@@ -212,7 +210,7 @@ defmodule RiverSide.Accounts.ScopeTest do
 
     test "vendor doesn't own other vendors" do
       user = user_fixture(%{is_vendor: true})
-      vendor = vendor_fixture(user_id: user.id)
+      _vendor = vendor_fixture(%{user_id: user.id})
       other_vendor = vendor_fixture()
       scope = Scope.for_user(user)
 
@@ -279,7 +277,7 @@ defmodule RiverSide.Accounts.ScopeTest do
   describe "vendor_id/1" do
     test "returns vendor id for vendor scope" do
       user = user_fixture(%{is_vendor: true})
-      vendor = vendor_fixture(user_id: user.id)
+      vendor = vendor_fixture(%{user_id: user.id})
       scope = Scope.for_user(user)
 
       assert Scope.vendor_id(scope) == vendor.id

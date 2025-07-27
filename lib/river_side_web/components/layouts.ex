@@ -35,38 +35,44 @@ defmodule RiverSideWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
-        </a>
+    <div class="min-h-screen bg-base-200">
+      <!-- Navigation -->
+      <div class="navbar bg-base-300 shadow-lg">
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold text-base-content px-4">River Side Food Court</h1>
+        </div>
+        <div class="flex-none gap-2">
+          <%= if @current_scope && @current_scope.user do %>
+            <div class="dropdown dropdown-end">
+              <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
+                  <span class="text-xl font-semibold">
+                    {String.first(@current_scope.user.email) |> String.upcase()}
+                  </span>
+                </div>
+              </label>
+              <ul
+                tabindex="0"
+                class="menu menu-compact dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+              >
+                <li class="menu-title">
+                  <span>{@current_scope.user.email}</span>
+                </li>
+                <li><.link href={~p"/users/settings"}>Settings</.link></li>
+                <li><.link href={~p"/users/log-out"} method="delete">Log out</.link></li>
+              </ul>
+            </div>
+          <% else %>
+            <.link href={~p"/users/log-in"} class="btn btn-primary">Log in</.link>
+          <% end %>
+        </div>
       </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </header>
-
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
+      
+    <!-- Main Content -->
+      <div class="container mx-auto p-6">
         {render_slot(@inner_block)}
       </div>
-    </main>
+    </div>
 
     <.flash_group flash={@flash} />
     """
