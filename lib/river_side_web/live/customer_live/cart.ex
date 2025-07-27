@@ -113,16 +113,21 @@ defmodule RiverSideWeb.CustomerLive.Cart do
           <!-- Customer Info -->
           <div class="card bg-base-100 shadow-xl mb-4">
             <div class="card-body">
-              <h2 class="card-title">Order Summary</h2>
+              <h2 class="card-title">Combined Cart Summary</h2>
+              <p class="text-sm text-base-content/70 mb-2">
+                Items from multiple vendors will be placed as separate orders
+              </p>
               <div class="grid grid-cols-2 gap-2 text-sm">
                 <span class="font-semibold">Table Number:</span>
                 <span class="text-lg">#{@customer_info.table_number}</span>
                 <span class="font-semibold">Phone:</span>
                 <span>{@customer_info.phone}</span>
                 <span class="font-semibold">Total Items:</span>
-                <span>{Enum.reduce(@cart_items, 0, fn {_, qty}, acc -> acc + qty end)}</span>
-                <span class="font-semibold">Vendors:</span>
-                <span>{map_size(@items_by_vendor)}</span>
+                <span class="badge badge-secondary">
+                  {Enum.reduce(@cart_items, 0, fn {_, qty}, acc -> acc + qty end)}
+                </span>
+                <span class="font-semibold">Number of Vendors:</span>
+                <span class="badge badge-primary">{map_size(@items_by_vendor)}</span>
               </div>
             </div>
           </div>
@@ -131,13 +136,16 @@ defmodule RiverSideWeb.CustomerLive.Cart do
           <%= for {vendor_id, vendor_items} <- @items_by_vendor do %>
             <div class="card bg-base-100 shadow-xl mb-4">
               <div class="card-body">
-                <div class="flex items-center gap-2 mb-2">
-                  <div class="avatar placeholder">
-                    <div class="bg-primary text-primary-content rounded-full w-10">
-                      <span class="text-xl">{String.first(vendor_items.vendor.name)}</span>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <div class="avatar placeholder">
+                      <div class="bg-primary text-primary-content rounded-full w-10">
+                        <span class="text-xl">{String.first(vendor_items.vendor.name)}</span>
+                      </div>
                     </div>
+                    <h3 class="card-title">{vendor_items.vendor.name}</h3>
                   </div>
-                  <h3 class="card-title">{vendor_items.vendor.name}</h3>
+                  <span class="badge badge-ghost">Separate Order</span>
                 </div>
                 <div class="divider my-2"></div>
 

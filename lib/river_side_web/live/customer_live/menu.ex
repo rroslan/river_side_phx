@@ -207,8 +207,13 @@ defmodule RiverSideWeb.CustomerLive.Menu do
                 d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
               />
             </svg>
-            <span class="badge badge-sm badge-secondary">{@cart_count}</span>
-            <span>RM {format_currency(@cart_total)}</span>
+            <div class="flex flex-col items-center ml-2">
+              <span class="badge badge-secondary badge-sm absolute -top-2 -right-2">
+                {@cart_count}
+              </span>
+              <span class="text-sm">View Cart</span>
+              <span class="font-bold">RM {format_currency(@cart_total)}</span>
+            </div>
           </.link>
         </div>
       <% end %>
@@ -245,8 +250,8 @@ defmodule RiverSideWeb.CustomerLive.Menu do
       menu_items =
         if selected_vendor_id, do: Vendors.list_available_menu_items(selected_vendor_id), else: []
 
-      # Calculate initial cart totals
-      {count, total} = calculate_cart_totals(cart_items, menu_items)
+      # Calculate initial cart totals for ALL items in cart
+      {count, total} = calculate_all_cart_totals(cart_items)
 
       {:ok,
        socket
@@ -275,7 +280,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
      |> assign(selected_vendor_id: vendor_id)
      |> assign(menu_items: menu_items)
      |> assign(filtered_items: menu_items)
-     |> recalculate_cart_totals()
+     |> recalculate_all_cart_totals()
      |> assign(selected_category: "all")}
   end
 
@@ -307,7 +312,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
             |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
             |> Map.new()
 
-          {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
+          {count, total} = calculate_all_cart_totals(cart_items)
 
           {:noreply,
            socket
@@ -343,7 +348,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
           |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
           |> Map.new()
 
-        {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
+        {count, total} = calculate_all_cart_totals(cart_items)
 
         {:noreply,
          socket
@@ -365,7 +370,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
       |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
       |> Map.new()
 
-    {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
+    {count, total} = calculate_all_cart_totals(cart_items)
 
     {:noreply,
      socket
@@ -375,23 +380,25 @@ defmodule RiverSideWeb.CustomerLive.Menu do
      |> assign(cart_total: total)}
   end
 
-  defp recalculate_cart_totals(socket) do
-    {count, total} = calculate_cart_totals(socket.assigns.cart_items, socket.assigns.menu_items)
+  defp recalculate_all_cart_totals(socket) do
+    {count, total} = calculate_all_cart_totals(socket.assigns.cart_items)
 
     socket
     |> assign(cart_count: count)
     |> assign(cart_total: total)
   end
 
-  defp calculate_cart_totals(cart_items, menu_items) do
+  # Calculate totals for ALL items in cart, across all vendors
+  defp calculate_all_cart_totals(cart_items) do
     Enum.reduce(cart_items, {0, Decimal.new("0")}, fn {item_id, qty}, {count, total} ->
-      item = Enum.find(menu_items, &(&1.id == item_id))
+      # Fetch item from database to get current price
+      case Vendors.get_menu_item(item_id) do
+        nil ->
+          {count, total}
 
-      if item do
-        item_total = Decimal.mult(item.price, qty)
-        {count + qty, Decimal.add(total, item_total)}
-      else
-        {count, total}
+        item ->
+          item_total = Decimal.mult(item.price, qty)
+          {count + qty, Decimal.add(total, item_total)}
       end
     end)
   end
