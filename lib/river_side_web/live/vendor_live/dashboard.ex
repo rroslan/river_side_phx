@@ -355,7 +355,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                             <img
                               src={item.image_url}
                               alt={item.name}
-                              class="rounded-xl h-48 w-full object-cover"
+                              class="rounded-xl h-48 w-48 mx-auto object-cover"
                             />
                           <% else %>
                             <div class="rounded-xl h-48 w-48 mx-auto bg-base-300 flex items-center justify-center">
@@ -416,7 +416,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                             <img
                               src={item.image_url}
                               alt={item.name}
-                              class="rounded-xl h-48 w-full object-cover"
+                              class="rounded-xl h-48 w-48 mx-auto object-cover"
                             />
                           <% else %>
                             <div class="rounded-xl h-48 w-48 mx-auto bg-base-300 flex items-center justify-center">

@@ -5,6 +5,16 @@ export default {
   mounted() {
     console.log("ImageCropper hook mounted");
 
+    // Store bound event handlers so we can remove them later
+    this.handleImageSelectBound = (e) => this.handleImageSelect(e);
+    this.handleMouseDownBound = (e) => this.handleMouseDown(e);
+    this.handleMouseMoveBound = (e) => this.handleMouseMove(e);
+    this.handleMouseUpBound = (e) => this.handleMouseUp(e);
+    this.handleTouchStartBound = (e) => this.handleTouchStart(e);
+    this.handleTouchMoveBound = (e) => this.handleTouchMove(e);
+    this.handleTouchEndBound = (e) => this.handleTouchEnd(e);
+    this.cropImageBound = () => this.cropImage();
+
     this.cropperContainer = this.el.querySelector("[data-cropper-container]");
     this.imageInput = this.el.querySelector("[data-image-input]");
     this.cropButton = this.el.querySelector("[data-crop-button]");
@@ -34,21 +44,13 @@ export default {
 
     // Set up event listeners
     if (this.imageInput) {
-      this.imageInput.addEventListener("change", (e) =>
-        this.handleImageSelect(e),
-      );
+      this.imageInput.addEventListener("change", this.handleImageSelectBound);
     } else {
       console.error("Image input element not found");
     }
-    this.canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
-    this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
-    this.canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e));
-    this.canvas.addEventListener("touchstart", (e) => this.handleTouchStart(e));
-    this.canvas.addEventListener("touchmove", (e) => this.handleTouchMove(e));
-    this.canvas.addEventListener("touchend", (e) => this.handleTouchEnd(e));
 
     if (this.cropButton) {
-      this.cropButton.addEventListener("click", () => this.cropImage());
+      this.cropButton.addEventListener("click", this.cropImageBound);
     }
 
     // Listen for aspect ratio changes
@@ -68,6 +70,34 @@ export default {
     });
   },
 
+  setupCanvasListeners() {
+    // Remove any existing listeners first
+    this.canvas.removeEventListener("mousedown", this.handleMouseDownBound);
+    this.canvas.removeEventListener("mousemove", this.handleMouseMoveBound);
+    this.canvas.removeEventListener("mouseup", this.handleMouseUpBound);
+    this.canvas.removeEventListener("touchstart", this.handleTouchStartBound);
+    this.canvas.removeEventListener("touchmove", this.handleTouchMoveBound);
+    this.canvas.removeEventListener("touchend", this.handleTouchEndBound);
+    window.removeEventListener("mousemove", this.handleMouseMoveBound);
+    window.removeEventListener("mouseup", this.handleMouseUpBound);
+
+    // Add fresh listeners
+    this.canvas.addEventListener("mousedown", this.handleMouseDownBound);
+    this.canvas.addEventListener("touchstart", this.handleTouchStartBound, {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchmove", this.handleTouchMoveBound, {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchend", this.handleTouchEndBound, {
+      passive: false,
+    });
+
+    // Add window listeners for mouse move and up to handle dragging outside canvas
+    window.addEventListener("mousemove", this.handleMouseMoveBound);
+    window.addEventListener("mouseup", this.handleMouseUpBound);
+  },
+
   handleImageSelect(e) {
     console.log("Image selected", e.target.files);
     const file = e.target.files[0];
@@ -84,6 +114,8 @@ export default {
         this.drawCanvas();
         if (this.canvas) {
           this.canvas.classList.remove("hidden");
+          // Set up canvas event listeners after canvas is visible
+          this.setupCanvasListeners();
         }
         if (this.controls) {
           this.controls.classList.remove("hidden");
@@ -121,6 +153,9 @@ export default {
       width: cropSize,
       height: cropSize,
     };
+
+    // Make sure canvas is interactive
+    this.canvas.style.cursor = "crosshair";
   },
 
   drawCanvas() {
@@ -209,9 +244,13 @@ export default {
   },
 
   handleMouseDown(e) {
+    e.preventDefault();
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    console.log("Mouse down at:", x, y);
+    console.log("Crop area:", this.cropData);
 
     // Check if clicking on resize handle
     const handles = this.getResizeHandles();
@@ -235,10 +274,12 @@ export default {
       this.isDragging = true;
       this.dragStart = { x: x - this.cropData.x, y: y - this.cropData.y };
       this.canvas.style.cursor = "move";
+      console.log("Started dragging");
     }
   },
 
   handleMouseMove(e) {
+    e.preventDefault();
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -265,11 +306,16 @@ export default {
     }
   },
 
-  handleMouseUp() {
+  handleMouseUp(e) {
+    e.preventDefault();
+    console.log("Mouse up - stopping drag/resize");
     this.isDragging = false;
     this.isResizing = false;
     this.resizeHandle = null;
-    this.canvas.style.cursor = "default";
+    this.updateCursor(
+      e.clientX - this.canvas.getBoundingClientRect().left,
+      e.clientY - this.canvas.getBoundingClientRect().top,
+    );
   },
 
   handleTouchStart(e) {
@@ -437,12 +483,24 @@ export default {
 
   destroyed() {
     // Clean up event listeners
-    this.imageInput?.removeEventListener("change", this.handleImageSelect);
-    this.canvas?.removeEventListener("mousedown", this.handleMouseDown);
-    this.canvas?.removeEventListener("mousemove", this.handleMouseMove);
-    this.canvas?.removeEventListener("mouseup", this.handleMouseUp);
-    this.canvas?.removeEventListener("touchstart", this.handleTouchStart);
-    this.canvas?.removeEventListener("touchmove", this.handleTouchMove);
-    this.canvas?.removeEventListener("touchend", this.handleTouchEnd);
+    if (this.imageInput) {
+      this.imageInput.removeEventListener(
+        "change",
+        this.handleImageSelectBound,
+      );
+    }
+    if (this.canvas) {
+      this.canvas.removeEventListener("mousedown", this.handleMouseDownBound);
+      this.canvas.removeEventListener("touchstart", this.handleTouchStartBound);
+      this.canvas.removeEventListener("touchmove", this.handleTouchMoveBound);
+      this.canvas.removeEventListener("touchend", this.handleTouchEndBound);
+    }
+    // Clean up window listeners
+    window.removeEventListener("mousemove", this.handleMouseMoveBound);
+    window.removeEventListener("mouseup", this.handleMouseUpBound);
+
+    if (this.cropButton) {
+      this.cropButton.removeEventListener("click", this.cropImageBound);
+    }
   },
 };

@@ -83,7 +83,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
             <div class="card bg-base-100 shadow-lg">
               <%= if item.image_url do %>
                 <figure>
-                  <img src={item.image_url} alt={item.name} class="w-full h-48 object-cover" />
+                  <img src={item.image_url} alt={item.name} class="w-48 h-48 mx-auto object-cover" />
                 </figure>
               <% end %>
               <div class="card-body">
