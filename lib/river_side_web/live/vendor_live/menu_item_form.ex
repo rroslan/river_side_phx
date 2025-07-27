@@ -105,7 +105,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                 </label>
                 
     <!-- Current Image -->
-                <%= if @menu_item.image_url && @live_action == :edit do %>
+                <%= if @menu_item.image_url && @live_action == :edit && !@cropped_image do %>
                   <div class="mb-4">
                     <p class="text-sm text-base-content/70 mb-2">Current image:</p>
                     <img
@@ -113,6 +113,23 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                       alt="Current menu item image"
                       class="w-32 h-32 object-cover rounded-lg"
                     />
+                    <div class="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        onclick="document.getElementById('image-file-input').click()"
+                      >
+                        Change Image
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-error btn-outline"
+                        phx-click="remove_image"
+                        data-confirm="Are you sure you want to remove this image?"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
                   </div>
                 <% end %>
                 
@@ -194,7 +211,11 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                         />
                       </svg>
                       <p class="mt-2 text-sm">
-                        <span class="font-medium text-primary">Click to upload</span>
+                        <span class="font-medium text-primary">
+                          {if @live_action == :edit && @menu_item.image_url && !@cropped_image,
+                            do: "Click to change image",
+                            else: "Click to upload"}
+                        </span>
                       </p>
                       <p class="text-xs text-base-content/50">PNG, JPG, GIF up to 10MB</p>
                       <p class="text-xs text-warning mt-2">
@@ -262,6 +283,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
     |> assign(:form, to_form(changeset))
     |> assign(:cropped_image, nil)
     |> assign(:temp_image_path, nil)
+    |> assign(:remove_image, false)
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -275,6 +297,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
       |> assign(:form, to_form(changeset))
       |> assign(:cropped_image, nil)
       |> assign(:temp_image_path, nil)
+      |> assign(:remove_image, false)
     else
       socket
       |> put_flash(:error, "You are not authorized to edit this item")
@@ -335,12 +358,32 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
   end
 
   @impl true
+  def handle_event("remove_image", _params, socket) do
+    # For edit mode, clear the current image
+    if socket.assigns.live_action == :edit do
+      {:noreply,
+       socket
+       |> assign(:menu_item, %{socket.assigns.menu_item | image_url: nil})
+       |> assign(:cropped_image, nil)
+       |> assign(:temp_image_path, nil)
+       |> assign(:remove_image, true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("save", %{"menu_item" => menu_item_params}, socket) do
     menu_item_params =
-      if socket.assigns.temp_image_path do
-        Map.put(menu_item_params, "image_url", socket.assigns.temp_image_path)
-      else
-        menu_item_params
+      cond do
+        socket.assigns[:remove_image] ->
+          Map.put(menu_item_params, "image_url", nil)
+
+        socket.assigns.temp_image_path ->
+          Map.put(menu_item_params, "image_url", socket.assigns.temp_image_path)
+
+        true ->
+          menu_item_params
       end
 
     menu_item_params = Map.put(menu_item_params, "vendor_id", socket.assigns.vendor.id)
