@@ -714,7 +714,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   defp group_orders_by_table(orders) do
     orders
     |> Enum.group_by(& &1.table_number)
-    |> Enum.map(fn {table_number, table_orders} ->
+    |> Map.new(fn {table_number, table_orders} ->
       total_amount =
         Enum.reduce(table_orders, Decimal.new("0"), fn order, acc ->
           Decimal.add(acc, order.total_amount)
