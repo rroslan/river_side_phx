@@ -1,6 +1,7 @@
 defmodule RiverSide.Vendors.Order do
   use Ecto.Schema
   import Ecto.Changeset
+  alias RiverSideWeb.Helpers.TimezoneHelper
 
   schema "orders" do
     field :order_number, :string
@@ -9,6 +10,8 @@ defmodule RiverSide.Vendors.Order do
     field :status, :string, default: "pending"
     field :total_amount, :decimal
     field :notes, :string
+    field :paid, :boolean, default: false
+    field :paid_at, :utc_datetime
 
     belongs_to :vendor, RiverSide.Vendors.Vendor
     belongs_to :cashier, RiverSide.Accounts.User
@@ -28,7 +31,9 @@ defmodule RiverSide.Vendors.Order do
       :total_amount,
       :notes,
       :vendor_id,
-      :cashier_id
+      :cashier_id,
+      :paid,
+      :paid_at
     ])
     |> validate_required([:order_number, :status, :total_amount, :vendor_id])
     |> validate_number(:total_amount, greater_than_or_equal_to: 0)
@@ -73,10 +78,20 @@ defmodule RiverSide.Vendors.Order do
     |> validate_number(:total_amount, greater_than_or_equal_to: 0)
   end
 
+  @doc """
+  Changeset for marking an order as paid.
+  """
+  def mark_as_paid_changeset(order) do
+    order
+    |> change()
+    |> put_change(:paid, true)
+    |> put_change(:paid_at, DateTime.utc_now() |> DateTime.truncate(:second))
+  end
+
   defp put_order_number(changeset) do
     if changeset.valid? do
-      # Generate order number: ORD-YYYYMMDD-XXXXX
-      date = Date.utc_today() |> Calendar.strftime("%Y%m%d")
+      # Generate order number: ORD-YYYYMMDD-XXXXX using Malaysian date
+      date = TimezoneHelper.malaysian_today() |> Calendar.strftime("%Y%m%d")
       random = :crypto.strong_rand_bytes(3) |> Base.encode16()
       order_number = "ORD-#{date}-#{random}"
       put_change(changeset, :order_number, order_number)

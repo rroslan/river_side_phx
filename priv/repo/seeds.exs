@@ -10,11 +10,16 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
-alias RiverSide.{Repo, Accounts, Vendors}
+alias RiverSide.Repo
+alias RiverSide.Accounts
+alias RiverSide.Vendors
+alias RiverSide.Tables
 alias RiverSide.Accounts.User
 alias RiverSide.Vendors.{Vendor, MenuItem}
 
-# Clear existing data
+# Clear existing data in correct order to respect foreign keys
+Repo.delete_all(RiverSide.Vendors.OrderItem)
+Repo.delete_all(RiverSide.Vendors.Order)
 Repo.delete_all(MenuItem)
 Repo.delete_all(Vendor)
 Repo.delete_all(User)
@@ -236,6 +241,11 @@ for {email, index} <- Enum.with_index(cashier_emails, 1) do
 
   IO.puts("Created cashier user: #{cashier.email}")
 end
+
+# Initialize tables
+IO.puts("\nInitializing tables...")
+{:ok, count} = Tables.initialize_tables()
+IO.puts("✅ Initialized #{count} tables")
 
 IO.puts("\n✅ Seed data created successfully!")
 IO.puts("\nYou can now log in with:")

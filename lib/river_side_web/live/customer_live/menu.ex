@@ -2,6 +2,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
+  alias RiverSide.Tables
 
   @impl true
   def render(assigns) do
@@ -129,7 +130,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
         <div class="fixed bottom-6 right-6 z-50">
           <.link
             href={
-              ~p"/customer/cart?phone=#{URI.encode(@customer_info.phone)}&name=#{URI.encode(@customer_info.name || "")}&table=#{@customer_info.table_number}&items=#{encode_cart_items(@cart_items)}"
+              ~p"/customer/cart?phone=#{URI.encode(@customer_info.phone)}&table=#{@customer_info.table_number}"
             }
             class="btn btn-primary btn-lg shadow-2xl"
           >
@@ -159,15 +160,25 @@ defmodule RiverSideWeb.CustomerLive.Menu do
   @impl true
   def mount(params, _session, socket) do
     phone = params["phone"]
-    name = params["name"]
     table_number = params["table"]
 
     if phone && table_number do
       customer_info = %{
         phone: phone,
-        name: if(name && name != "", do: name, else: nil),
         table_number: String.to_integer(table_number)
       }
+
+      # Get the table
+      table = Tables.get_table_by_number!(customer_info.table_number)
+
+      # Subscribe to table updates
+      Tables.subscribe_to_table(table.number)
+
+      # Load cart from table
+      cart_items =
+        Tables.get_table_cart(table)
+        |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+        |> Map.new()
 
       vendors = Vendors.list_active_vendors()
       selected_vendor_id = if vendors != [], do: hd(vendors).id, else: nil
@@ -175,17 +186,21 @@ defmodule RiverSideWeb.CustomerLive.Menu do
       menu_items =
         if selected_vendor_id, do: Vendors.list_available_menu_items(selected_vendor_id), else: []
 
+      # Calculate initial cart totals
+      {count, total} = calculate_cart_totals(cart_items, menu_items)
+
       {:ok,
        socket
        |> assign(customer_info: customer_info)
+       |> assign(table: table)
        |> assign(vendors: vendors)
        |> assign(selected_vendor_id: selected_vendor_id)
        |> assign(selected_category: "all")
        |> assign(menu_items: menu_items)
        |> assign(filtered_items: menu_items)
-       |> assign(cart_items: %{})
-       |> assign(cart_count: 0)
-       |> assign(cart_total: Decimal.new("0"))}
+       |> assign(cart_items: cart_items)
+       |> assign(cart_count: count)
+       |> assign(cart_total: total)}
     else
       {:ok, push_navigate(socket, to: ~p"/")}
     end
@@ -201,6 +216,7 @@ defmodule RiverSideWeb.CustomerLive.Menu do
      |> assign(selected_vendor_id: vendor_id)
      |> assign(menu_items: menu_items)
      |> assign(filtered_items: menu_items)
+     |> recalculate_cart_totals()
      |> assign(selected_category: "all")}
   end
 
@@ -225,16 +241,25 @@ defmodule RiverSideWeb.CustomerLive.Menu do
     item = Enum.find(socket.assigns.menu_items, &(&1.id == item_id))
 
     if item do
-      current_qty = Map.get(socket.assigns.cart_items, item_id, 0)
-      updated_cart = Map.put(socket.assigns.cart_items, item_id, current_qty + 1)
+      case Tables.add_to_cart(socket.assigns.table, item_id, 1) do
+        {:ok, updated_table} ->
+          cart_items =
+            Tables.get_table_cart(updated_table)
+            |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+            |> Map.new()
 
-      {count, total} = calculate_cart_totals(updated_cart, socket.assigns.menu_items)
+          {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
 
-      {:noreply,
-       socket
-       |> assign(cart_items: updated_cart)
-       |> assign(cart_count: count)
-       |> assign(cart_total: total)}
+          {:noreply,
+           socket
+           |> assign(table: updated_table)
+           |> assign(cart_items: cart_items)
+           |> assign(cart_count: count)
+           |> assign(cart_total: total)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to add item to cart")}
+      end
     else
       {:noreply, socket}
     end
@@ -245,20 +270,58 @@ defmodule RiverSideWeb.CustomerLive.Menu do
     item_id = String.to_integer(item_id)
     current_qty = Map.get(socket.assigns.cart_items, item_id, 0)
 
-    updated_cart =
+    result =
       if current_qty > 1 do
-        Map.put(socket.assigns.cart_items, item_id, current_qty - 1)
+        Tables.update_cart_item(socket.assigns.table, item_id, current_qty - 1)
       else
-        Map.delete(socket.assigns.cart_items, item_id)
+        Tables.remove_from_cart(socket.assigns.table, item_id)
       end
 
-    {count, total} = calculate_cart_totals(updated_cart, socket.assigns.menu_items)
+    case result do
+      {:ok, updated_table} ->
+        cart_items =
+          Tables.get_table_cart(updated_table)
+          |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+          |> Map.new()
+
+        {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
+
+        {:noreply,
+         socket
+         |> assign(table: updated_table)
+         |> assign(cart_items: cart_items)
+         |> assign(cart_count: count)
+         |> assign(cart_total: total)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to update cart")}
+    end
+  end
+
+  @impl true
+  def handle_info({:table_updated, table}, socket) do
+    # Load updated cart from table
+    cart_items =
+      Tables.get_table_cart(table)
+      |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+      |> Map.new()
+
+    {count, total} = calculate_cart_totals(cart_items, socket.assigns.menu_items)
 
     {:noreply,
      socket
-     |> assign(cart_items: updated_cart)
+     |> assign(table: table)
+     |> assign(cart_items: cart_items)
      |> assign(cart_count: count)
      |> assign(cart_total: total)}
+  end
+
+  defp recalculate_cart_totals(socket) do
+    {count, total} = calculate_cart_totals(socket.assigns.cart_items, socket.assigns.menu_items)
+
+    socket
+    |> assign(cart_count: count)
+    |> assign(cart_total: total)
   end
 
   defp calculate_cart_totals(cart_items, menu_items) do
@@ -287,11 +350,5 @@ defmodule RiverSideWeb.CustomerLive.Menu do
     float_string
     |> String.to_float()
     |> :erlang.float_to_binary(decimals: 2)
-  end
-
-  defp encode_cart_items(cart_items) do
-    cart_items
-    |> Jason.encode!()
-    |> Base.url_encode64(padding: false)
   end
 end

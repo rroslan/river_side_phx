@@ -1,6 +1,8 @@
 defmodule RiverSideWeb.CustomerLive.Checkin do
   use RiverSideWeb, :live_view
 
+  alias RiverSide.Tables
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -53,19 +55,6 @@ defmodule RiverSideWeb.CustomerLive.Checkin do
                 />
               </div>
 
-              <div class="form-control w-full mt-4">
-                <label class="label">
-                  <span class="label-text">Name</span>
-                  <span class="label-text-alt">Optional</span>
-                </label>
-                <.input
-                  field={@form[:name]}
-                  type="text"
-                  placeholder="Your name"
-                  class="input input-bordered w-full"
-                />
-              </div>
-
               <div class="form-actions mt-6">
                 <button
                   type="submit"
@@ -108,7 +97,6 @@ defmodule RiverSideWeb.CustomerLive.Checkin do
     form =
       to_form(%{
         "phone" => "",
-        "name" => "",
         "table_number" => table_number
       })
 
@@ -119,11 +107,10 @@ defmodule RiverSideWeb.CustomerLive.Checkin do
   end
 
   @impl true
-  def handle_event("validate", %{"phone" => phone, "name" => name}, socket) do
+  def handle_event("validate", %{"phone" => phone}, socket) do
     form =
       to_form(%{
         "phone" => phone,
-        "name" => name,
         "table_number" => socket.assigns.table_number
       })
 
@@ -131,13 +118,33 @@ defmodule RiverSideWeb.CustomerLive.Checkin do
   end
 
   @impl true
-  def handle_event("submit_checkin", %{"phone" => phone, "name" => name}, socket) do
-    # Redirect to menu with customer info in URL parameters
-    {:noreply,
-     socket
-     |> push_navigate(
-       to:
-         ~p"/customer/menu?phone=#{URI.encode(phone)}&name=#{URI.encode(name || "")}&table=#{socket.assigns.table_number}"
-     )}
+  def handle_event("submit_checkin", %{"phone" => phone}, socket) do
+    table_number = socket.assigns.table_number
+
+    # Get the table and mark it as occupied
+    case Tables.get_table_by_number(String.to_integer(table_number)) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Table not found")
+         |> push_navigate(to: ~p"/")}
+
+      table ->
+        case Tables.occupy_table(table, %{customer_phone: phone}) do
+          {:ok, _updated_table} ->
+            # Redirect to menu with customer info in URL parameters
+            {:noreply,
+             socket
+             |> push_navigate(
+               to: ~p"/customer/menu?phone=#{URI.encode(phone)}&table=#{table_number}"
+             )}
+
+          {:error, _changeset} ->
+            {:noreply,
+             socket
+             |> put_flash(:error, "Failed to check in. Please try again.")
+             |> push_navigate(to: ~p"/")}
+        end
+    end
   end
 end

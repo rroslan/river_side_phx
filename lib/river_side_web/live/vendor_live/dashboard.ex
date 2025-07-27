@@ -2,7 +2,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
-  alias RiverSide.Vendors
+  alias RiverSideWeb.Helpers.TimezoneHelper
 
   @impl true
   def render(assigns) do
@@ -87,7 +87,46 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
       <%= if @vendor do %>
         <div class="container mx-auto p-6">
-          <!-- Vendor Setup Notice -->
+          <!-- Flash Messages -->
+          <%= if Phoenix.Flash.get(@flash, :error) do %>
+            <div class="alert alert-error mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="stroke-current flex-shrink-0 h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>{Phoenix.Flash.get(@flash, :error)}</span>
+            </div>
+          <% end %>
+
+          <%= if Phoenix.Flash.get(@flash, :info) do %>
+            <div class="alert alert-info mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="stroke-current flex-shrink-0 w-6 h-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>{Phoenix.Flash.get(@flash, :info)}</span>
+            </div>
+          <% end %>
+          
+    <!-- Vendor Setup Notice -->
           <%= if !@vendor.logo_url || @vendor.name == "New Vendor" do %>
             <div class="alert alert-warning shadow-lg mb-6">
               <svg
@@ -259,14 +298,9 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                               Mark Ready
                             </button>
                           <% "ready" -> %>
-                            <button
-                              class="btn btn-info btn-sm"
-                              phx-click="update_order_status"
-                              phx-value-id={order.id}
-                              phx-value-status="completed"
-                            >
-                              Complete Order
-                            </button>
+                            <span class="text-sm text-success">
+                              Ready for pickup
+                            </span>
                         <% end %>
                         <button
                           class="btn btn-error btn-sm btn-outline"
@@ -476,7 +510,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                           <div>
                             <p class="font-semibold">Table {order.table_number}</p>
                             <p class="text-sm opacity-70">
-                              {Calendar.strftime(order.updated_at, "%I:%M %p")}
+                              {TimezoneHelper.format_malaysian_time_only(order.updated_at)}
                             </p>
                           </div>
                           <span class="text-lg font-bold">
@@ -628,9 +662,17 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     menu_item = Vendors.get_menu_item!(id)
 
     case Vendors.toggle_menu_item_availability(menu_item) do
-      {:ok, _} ->
+      {:ok, updated_item} ->
+        # Reload all menu items to ensure consistency
         menu_items = Vendors.list_menu_items(socket.assigns.vendor.id)
-        {:noreply, assign(socket, menu_items: menu_items)}
+
+        {:noreply,
+         socket
+         |> assign(menu_items: menu_items)
+         |> put_flash(
+           :info,
+           "#{updated_item.name} is now #{if updated_item.is_available, do: "available", else: "unavailable"}"
+         )}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to update availability")}

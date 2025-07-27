@@ -1,6 +1,8 @@
 defmodule RiverSideWeb.TableLive.Index do
   use RiverSideWeb, :live_view
 
+  alias RiverSide.Tables
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -145,6 +147,69 @@ defmodule RiverSideWeb.TableLive.Index do
       </div>
 
       <div class="container mx-auto p-6">
+        <!-- Flash Messages -->
+        <%= if Phoenix.Flash.get(@flash, :error) do %>
+          <div class="alert alert-error mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-current flex-shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{Phoenix.Flash.get(@flash, :error)}</span>
+          </div>
+        <% end %>
+
+        <%= if Phoenix.Flash.get(@flash, :info) do %>
+          <div class="alert alert-info mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              class="stroke-current flex-shrink-0 w-6 h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{Phoenix.Flash.get(@flash, :info)}</span>
+          </div>
+        <% end %>
+        
+    <!-- Simulation Mode Banner -->
+        <div class="alert alert-info shadow-lg mb-6">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="stroke-current flex-shrink-0 w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            >
+            </path>
+          </svg>
+          <div>
+            <h3 class="font-bold">Simulation Mode</h3>
+            <div class="text-xs">
+              All tables are available for testing. Select any table to begin the customer ordering experience.
+            </div>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
           <%= for table_number <- 1..20 do %>
             <div
@@ -272,34 +337,28 @@ defmodule RiverSideWeb.TableLive.Index do
   end
 
   defp mount_tables(socket) do
-    # Initialize tables with some sample data
-    tables =
-      1..20
-      |> Enum.map(fn i ->
-        case rem(i, 4) do
-          0 ->
-            {i,
-             %{
-               occupied: true,
-               occupied_at: DateTime.utc_now() |> DateTime.add(-:rand.uniform(7200), :second)
-             }}
-
-          1 ->
-            {i,
-             %{
-               occupied: true,
-               occupied_at: DateTime.utc_now() |> DateTime.add(-:rand.uniform(3600), :second)
-             }}
-
-          _ ->
-            {i, %{occupied: false, occupied_at: nil}}
-        end
-      end)
-      |> Map.new()
-
+    # Subscribe to table updates
     if connected?(socket) do
+      Tables.subscribe()
       :timer.send_interval(1000, self(), :tick)
     end
+
+    # Get real table data from database
+    tables_list = Tables.list_tables()
+
+    # Convert to map format expected by the view
+    tables =
+      tables_list
+      |> Enum.map(fn table ->
+        {table.number,
+         %{
+           id: table.id,
+           occupied: table.status == "occupied",
+           occupied_at: table.occupied_at,
+           customer_phone: table.customer_phone
+         }}
+      end)
+      |> Map.new()
 
     {:ok, assign(socket, tables: tables)}
   end
@@ -311,24 +370,44 @@ defmodule RiverSideWeb.TableLive.Index do
   end
 
   @impl true
+  def handle_info({:table_updated, table}, socket) do
+    # Update the specific table in our map
+    updated_tables =
+      Map.put(socket.assigns.tables, table.number, %{
+        id: table.id,
+        occupied: table.status == "occupied",
+        occupied_at: table.occupied_at,
+        customer_phone: table.customer_phone
+      })
+
+    {:noreply, assign(socket, tables: updated_tables)}
+  end
+
+  @impl true
+  def handle_info(:tables_reset, socket) do
+    # Reload all tables after reset
+    mount_tables(socket)
+  end
+
+  @impl true
   def handle_event("select_table", %{"number" => table_number}, socket) do
     table_num = String.to_integer(table_number)
+    table_info = socket.assigns.tables[table_num]
 
-    # Redirect to customer check-in page
-    {:noreply, push_navigate(socket, to: ~p"/customer/checkin/#{table_num}")}
+    # Check if table is already occupied
+    if table_info && table_info.occupied do
+      {:noreply, put_flash(socket, :error, "This table is already occupied")}
+    else
+      # Redirect to customer check-in page
+      {:noreply, push_navigate(socket, to: ~p"/customer/checkin/#{table_num}")}
+    end
   end
 
   @impl true
   def handle_event("reset_tables", _params, socket) do
-    # Reset all tables to unoccupied
-    tables =
-      1..20
-      |> Enum.map(fn i ->
-        {i, %{occupied: false, occupied_at: nil}}
-      end)
-      |> Map.new()
-
-    {:noreply, assign(socket, tables: tables)}
+    # Reset all tables in database
+    Tables.reset_all_tables()
+    {:noreply, put_flash(socket, :info, "All tables have been reset")}
   end
 
   defp table_status_class(nil), do: ""

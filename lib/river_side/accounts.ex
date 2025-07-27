@@ -43,6 +43,23 @@ defmodule RiverSide.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
 
   @doc """
+  Updates a user's roles.
+
+  ## Examples
+
+      iex> update_user_roles(user, %{is_admin: true, is_vendor: false})
+      {:ok, %User{}}
+
+      iex> update_user_roles(user, %{is_vendor: false})
+      {:error, %Ecto.Changeset{}}
+  """
+  def update_user_roles(%User{} = user, role_attrs) do
+    user
+    |> User.role_changeset(role_attrs)
+    |> Repo.update()
+  end
+
+  @doc """
   Returns the list of users.
 
   ## Examples
@@ -74,7 +91,12 @@ defmodule RiverSide.Accounts do
     case get_user_by_email(email) do
       nil ->
         # User doesn't exist, create new
-        attrs = Map.merge(role_attrs, %{email: email, confirmed_at: DateTime.utc_now(:second)})
+        # Convert string keys to atoms for consistency
+        attrs =
+          role_attrs
+          |> Enum.map(fn {k, v} -> {String.to_atom(to_string(k)), v} end)
+          |> Enum.into(%{})
+          |> Map.merge(%{email: email, confirmed_at: DateTime.utc_now(:second)})
 
         %User{}
         |> User.email_changeset(attrs)
@@ -82,8 +104,14 @@ defmodule RiverSide.Accounts do
 
       existing_user ->
         # User exists, update roles only
+        # Convert string keys to atoms for consistency
+        attrs =
+          role_attrs
+          |> Enum.map(fn {k, v} -> {String.to_atom(to_string(k)), v} end)
+          |> Enum.into(%{})
+
         existing_user
-        |> User.role_changeset(role_attrs)
+        |> User.role_changeset(attrs)
         |> Repo.update()
     end
   end

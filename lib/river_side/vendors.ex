@@ -5,6 +5,7 @@ defmodule RiverSide.Vendors do
 
   import Ecto.Query, warn: false
   alias RiverSide.Repo
+  alias RiverSideWeb.Helpers.TimezoneHelper
 
   alias RiverSide.Vendors.{Vendor, MenuItem, Order, OrderItem}
 
@@ -187,7 +188,7 @@ defmodule RiverSide.Vendors do
   Returns today's orders for a vendor.
   """
   def list_todays_orders(vendor_id \\ nil) do
-    today = Date.utc_today()
+    today = TimezoneHelper.malaysian_today()
     list_vendor_orders(vendor_id, date: today)
   end
 
@@ -209,6 +210,33 @@ defmodule RiverSide.Vendors do
       end
 
     Repo.all(query)
+  end
+
+  @doc """
+  Checks if all orders for a table are completed or cancelled.
+  """
+  def all_orders_completed_for_table?(table_number) do
+    active_count =
+      from(o in Order,
+        where: o.table_number == ^to_string(table_number),
+        where: o.status not in ["completed", "cancelled"],
+        select: count(o.id)
+      )
+      |> Repo.one()
+
+    active_count == 0
+  end
+
+  @doc """
+  Lists all orders for a specific table number.
+  """
+  def list_orders_for_table(table_number) do
+    from(o in Order,
+      where: o.table_number == ^to_string(table_number),
+      order_by: [asc: o.inserted_at],
+      preload: [:vendor]
+    )
+    |> Repo.all()
   end
 
   @doc """
@@ -292,9 +320,11 @@ defmodule RiverSide.Vendors do
 
           # Update order with total
           case update_order_total(order, %{total_amount: total}) do
-            {:ok, order} ->
+            {:ok, updated_order} ->
               # Broadcast the new order
-              broadcast_order_update({:ok, get_order!(order.id)})
+              full_order = get_order!(updated_order.id)
+              broadcast_order_update({:ok, full_order})
+              full_order
 
             {:error, changeset} ->
               Repo.rollback(changeset)
@@ -312,6 +342,16 @@ defmodule RiverSide.Vendors do
   def update_order_status(%Order{} = order, attrs) do
     order
     |> Order.update_status_changeset(attrs)
+    |> Repo.update()
+    |> broadcast_order_update()
+  end
+
+  @doc """
+  Marks an order as paid.
+  """
+  def mark_order_as_paid(%Order{} = order) do
+    order
+    |> Order.mark_as_paid_changeset()
     |> Repo.update()
     |> broadcast_order_update()
   end
@@ -364,7 +404,9 @@ defmodule RiverSide.Vendors do
   @doc """
   Gets sales statistics for a vendor.
   """
-  def get_vendor_sales_stats(vendor_id, date \\ Date.utc_today()) do
+  def get_vendor_sales_stats(vendor_id, date \\ nil) do
+    # Use Malaysian date if not provided
+    date = date || TimezoneHelper.malaysian_today()
     # Today's stats
     today_query =
       from o in Order,

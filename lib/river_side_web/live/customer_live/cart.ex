@@ -2,6 +2,7 @@ defmodule RiverSideWeb.CustomerLive.Cart do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
+  alias RiverSide.Tables
 
   @impl true
   def render(assigns) do
@@ -9,12 +10,14 @@ defmodule RiverSideWeb.CustomerLive.Cart do
     <div class="min-h-screen bg-base-200">
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
-          <h1 class="text-2xl font-bold text-base-content px-4">Your Cart</h1>
+          <h1 class="text-2xl font-bold text-base-content px-4">
+            Your Cart - Table #{@customer_info.table_number}
+          </h1>
         </div>
         <div class="flex-none">
           <.link
             href={
-              ~p"/customer/menu?phone=#{URI.encode(@customer_info.phone)}&name=#{URI.encode(@customer_info.name || "")}&table=#{@customer_info.table_number}"
+              ~p"/customer/menu?phone=#{URI.encode(@customer_info.phone)}&table=#{@customer_info.table_number}"
             }
             class="btn btn-ghost btn-sm"
           >
@@ -38,6 +41,45 @@ defmodule RiverSideWeb.CustomerLive.Cart do
       </div>
 
       <div class="container mx-auto p-4 max-w-2xl">
+        <!-- Flash Messages -->
+        <%= if Phoenix.Flash.get(@flash, :error) do %>
+          <div class="alert alert-error mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-current flex-shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{Phoenix.Flash.get(@flash, :error)}</span>
+          </div>
+        <% end %>
+
+        <%= if Phoenix.Flash.get(@flash, :info) do %>
+          <div class="alert alert-info mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              class="stroke-current flex-shrink-0 w-6 h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>{Phoenix.Flash.get(@flash, :info)}</span>
+          </div>
+        <% end %>
+
         <%= if @cart_items == %{} do %>
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body text-center">
@@ -59,7 +101,7 @@ defmodule RiverSideWeb.CustomerLive.Cart do
               <p class="text-base-content/70 mt-2">Add some delicious items from the menu!</p>
               <.link
                 href={
-                  ~p"/customer/menu?phone=#{URI.encode(@customer_info.phone)}&name=#{URI.encode(@customer_info.name || "")}&table=#{@customer_info.table_number}"
+                  ~p"/customer/menu?phone=#{URI.encode(@customer_info.phone)}&table=#{@customer_info.table_number}"
                 }
                 class="btn btn-primary mt-6"
               >
@@ -71,16 +113,16 @@ defmodule RiverSideWeb.CustomerLive.Cart do
           <!-- Customer Info -->
           <div class="card bg-base-100 shadow-xl mb-4">
             <div class="card-body">
-              <h2 class="card-title">Order Details</h2>
+              <h2 class="card-title">Order Summary</h2>
               <div class="grid grid-cols-2 gap-2 text-sm">
-                <span class="font-semibold">Table:</span>
-                <span>#{@customer_info.table_number}</span>
+                <span class="font-semibold">Table Number:</span>
+                <span class="text-lg">#{@customer_info.table_number}</span>
                 <span class="font-semibold">Phone:</span>
                 <span>{@customer_info.phone}</span>
-                <%= if @customer_info.name do %>
-                  <span class="font-semibold">Name:</span>
-                  <span>{@customer_info.name}</span>
-                <% end %>
+                <span class="font-semibold">Total Items:</span>
+                <span>{Enum.reduce(@cart_items, 0, fn {_, qty}, acc -> acc + qty end)}</span>
+                <span class="font-semibold">Vendors:</span>
+                <span>{map_size(@items_by_vendor)}</span>
               </div>
             </div>
           </div>
@@ -89,14 +131,24 @@ defmodule RiverSideWeb.CustomerLive.Cart do
           <%= for {vendor_id, vendor_items} <- @items_by_vendor do %>
             <div class="card bg-base-100 shadow-xl mb-4">
               <div class="card-body">
-                <h3 class="card-title">{vendor_items.vendor.name}</h3>
-                <div class="divider"></div>
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-10">
+                      <span class="text-xl">{String.first(vendor_items.vendor.name)}</span>
+                    </div>
+                  </div>
+                  <h3 class="card-title">{vendor_items.vendor.name}</h3>
+                </div>
+                <div class="divider my-2"></div>
 
                 <%= for item <- vendor_items.items do %>
-                  <div class="flex justify-between items-center py-2">
+                  <div class="flex justify-between items-center py-2 border-b border-base-200 last:border-0">
                     <div class="flex-1">
                       <h4 class="font-semibold">{item.name}</h4>
                       <p class="text-sm text-base-content/70">
+                        {item.description}
+                      </p>
+                      <p class="text-sm font-medium mt-1">
                         RM {format_currency(item.price)} × {item.quantity}
                       </p>
                     </div>
@@ -141,7 +193,11 @@ defmodule RiverSideWeb.CustomerLive.Cart do
                 <span>Total:</span>
                 <span>RM {format_currency(@total)}</span>
               </div>
-              <button phx-click="checkout" class="btn btn-secondary btn-lg mt-4">
+              <button
+                phx-click="checkout"
+                class="btn btn-secondary btn-lg mt-4"
+                phx-disable-with="Processing..."
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
@@ -169,32 +225,32 @@ defmodule RiverSideWeb.CustomerLive.Cart do
   @impl true
   def mount(params, _session, socket) do
     phone = params["phone"]
-    name = params["name"]
     table_number = params["table"]
-    encoded_items = params["items"]
 
     if phone && table_number do
       customer_info = %{
         phone: phone,
-        name: if(name && name != "", do: name, else: nil),
         table_number: String.to_integer(table_number)
       }
 
+      # Get the table and load cart from it
+      table = Tables.get_table_by_number!(customer_info.table_number)
+
+      # Subscribe to table updates
+      Tables.subscribe_to_table(table.number)
+
+      # Load cart from table
       cart_items =
-        if encoded_items && encoded_items != "" do
-          encoded_items
-          |> Base.url_decode64!(padding: false)
-          |> Jason.decode!()
-          |> Map.new(fn {k, v} -> {String.to_integer(k), v} end)
-        else
-          %{}
-        end
+        Tables.get_table_cart(table)
+        |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+        |> Map.new()
 
       {items_by_vendor, total} = organize_cart_items(cart_items)
 
       {:ok,
        socket
        |> assign(customer_info: customer_info)
+       |> assign(table: table)
        |> assign(cart_items: cart_items)
        |> assign(items_by_vendor: items_by_vendor)
        |> assign(total: total)}
@@ -208,72 +264,115 @@ defmodule RiverSideWeb.CustomerLive.Cart do
     item_id = String.to_integer(item_id)
     current_qty = Map.get(socket.assigns.cart_items, item_id, 0)
 
-    updated_cart =
+    result =
       case action do
         "increase" ->
-          Map.put(socket.assigns.cart_items, item_id, current_qty + 1)
+          Tables.update_cart_item(socket.assigns.table, item_id, current_qty + 1)
 
         "decrease" ->
           if current_qty > 1 do
-            Map.put(socket.assigns.cart_items, item_id, current_qty - 1)
+            Tables.update_cart_item(socket.assigns.table, item_id, current_qty - 1)
           else
-            Map.delete(socket.assigns.cart_items, item_id)
+            Tables.remove_from_cart(socket.assigns.table, item_id)
           end
       end
 
-    {items_by_vendor, total} = organize_cart_items(updated_cart)
+    case result do
+      {:ok, updated_table} ->
+        cart_items =
+          Tables.get_table_cart(updated_table)
+          |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+          |> Map.new()
 
-    {:noreply,
-     socket
-     |> assign(cart_items: updated_cart)
-     |> assign(items_by_vendor: items_by_vendor)
-     |> assign(total: total)}
+        {items_by_vendor, total} = organize_cart_items(cart_items)
+
+        {:noreply,
+         socket
+         |> assign(table: updated_table)
+         |> assign(cart_items: cart_items)
+         |> assign(items_by_vendor: items_by_vendor)
+         |> assign(total: total)}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to update cart")}
+    end
   end
 
   @impl true
   def handle_event("checkout", _params, socket) do
     customer_info = socket.assigns.customer_info
 
-    # Create orders for each vendor
-    order_results =
-      Enum.map(socket.assigns.items_by_vendor, fn {vendor_id, vendor_items} ->
-        order_params = %{
-          vendor_id: vendor_id,
-          customer_phone: customer_info.phone,
-          customer_name: customer_info.name,
-          table_number: customer_info.table_number,
-          order_items:
-            Enum.map(vendor_items.items, fn item ->
-              %{
-                menu_item_id: item.id,
-                quantity: item.quantity,
-                price: item.price
-              }
-            end)
-        }
+    # Check if cart is empty
+    if map_size(socket.assigns.cart_items) == 0 do
+      {:noreply, put_flash(socket, :error, "Your cart is empty")}
+    else
+      # Create orders for each vendor
+      order_results =
+        Enum.map(socket.assigns.items_by_vendor, fn {vendor_id, vendor_items} ->
+          order_params = %{
+            vendor_id: vendor_id,
+            customer_phone: customer_info.phone,
+            customer_name: customer_info.phone,
+            table_number: to_string(customer_info.table_number),
+            order_items:
+              Enum.map(vendor_items.items, fn item ->
+                %{
+                  menu_item_id: item.id,
+                  quantity: item.quantity,
+                  price: item.price
+                }
+              end)
+          }
 
-        Vendors.create_order(order_params)
-      end)
+          Vendors.create_order(order_params)
+        end)
 
-    # Check if all orders were created successfully
-    case Enum.find(order_results, fn {status, _} -> status == :error end) do
-      nil ->
-        # All orders successful, get the order IDs
-        order_ids = Enum.map(order_results, fn {:ok, order} -> order.id end)
+      # Check if all orders were created successfully
+      case Enum.find(order_results, fn {status, _} -> status == :error end) do
+        nil ->
+          # All orders successful, get the order IDs
+          order_ids = Enum.map(order_results, fn {:ok, order} -> order.id end)
 
-        # Clear the cart
-        # Redirect to order tracking with parameters
-        {:noreply,
-         push_navigate(socket,
-           to:
-             ~p"/customer/orders?phone=#{URI.encode(customer_info.phone)}&name=#{URI.encode(customer_info.name || "")}&table=#{customer_info.table_number}&order_ids=#{Enum.join(order_ids, ",")}"
-         )}
+          # Clear the cart from the table
+          Tables.clear_cart(socket.assigns.table)
 
-      {:error, _changeset} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Failed to place order. Please try again.")}
+          # Redirect to order tracking with parameters
+          {:noreply,
+           socket
+           |> put_flash(:info, "Order placed successfully!")
+           |> push_navigate(
+             to:
+               ~p"/customer/orders?phone=#{URI.encode(customer_info.phone)}&table=#{customer_info.table_number}&order_ids=#{Enum.join(order_ids, ",")}"
+           )}
+
+        error ->
+          # Log the error for debugging
+          require Logger
+          Logger.error("Order creation failed: #{inspect(error)}")
+
+          {:noreply,
+           socket
+           |> put_flash(:error, "Failed to place order. Please try again.")}
+      end
     end
+  end
+
+  @impl true
+  def handle_info({:table_updated, table}, socket) do
+    # Load updated cart from table
+    cart_items =
+      Tables.get_table_cart(table)
+      |> Enum.map(fn {k, v} -> {String.to_integer(k), v} end)
+      |> Map.new()
+
+    {items_by_vendor, total} = organize_cart_items(cart_items)
+
+    {:noreply,
+     socket
+     |> assign(table: table)
+     |> assign(cart_items: cart_items)
+     |> assign(items_by_vendor: items_by_vendor)
+     |> assign(total: total)}
   end
 
   defp organize_cart_items(cart_items) do

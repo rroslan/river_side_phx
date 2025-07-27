@@ -2,6 +2,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
+  alias RiverSideWeb.Helpers.TimezoneHelper
 
   @impl true
   def render(assigns) do
@@ -35,9 +36,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
             <div class="flex justify-between items-center">
               <div>
                 <h2 class="text-xl font-bold">Table #{@customer_info.table_number}</h2>
-                <p class="text-base-content/70">
-                  {if @customer_info.name, do: @customer_info.name <> " • ", else: ""}{@customer_info.phone}
-                </p>
+                <p class="text-base-content/70">{@customer_info.phone}</p>
               </div>
               <.link href={~p"/"} class="btn btn-error btn-sm">
                 <svg
@@ -57,20 +56,91 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
                 End Session
               </.link>
             </div>
+            
+    <!-- Vendor Summary -->
+            <% all_orders = @active_orders ++ @completed_orders %>
+            <%= if length(all_orders) > 0 do %>
+              <div class="divider"></div>
+              <div>
+                <h3 class="text-sm font-bold mb-2">Your Orders By Vendor:</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <%= for {vendor_name, vendor_orders} <- Enum.group_by(all_orders, & &1.vendor.name) do %>
+                    <div class="bg-base-200 rounded-lg p-3">
+                      <div class="font-semibold">{vendor_name}</div>
+                      <div class="text-sm text-base-content/70">
+                        {length(vendor_orders)} order(s) •
+                        RM {vendor_orders
+                        |> Enum.map(& &1.total_amount)
+                        |> Enum.reduce(Decimal.new("0"), &Decimal.add/2)
+                        |> format_currency()}
+                      </div>
+                      <div class="flex gap-1 mt-1">
+                        <%= for order <- vendor_orders do %>
+                          <span class={status_badge_class(order.status) <> " badge-xs"}>
+                            {status_text(order.status)}
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
           </div>
         </div>
         
+    <!-- Vendor Filter -->
+        <% all_vendors =
+          (@active_orders ++ @completed_orders) |> Enum.map(& &1.vendor.name) |> Enum.uniq() %>
+        <%= if length(all_vendors) > 1 do %>
+          <div class="flex gap-2 mb-4 overflow-x-auto">
+            <button
+              class={"btn btn-sm #{if @selected_vendor == nil, do: "btn-primary", else: "btn-ghost"}"}
+              phx-click="filter_vendor"
+              phx-value-vendor=""
+            >
+              All Vendors
+            </button>
+            <%= for vendor_name <- all_vendors do %>
+              <button
+                class={"btn btn-sm #{if @selected_vendor == vendor_name, do: "btn-primary", else: "btn-ghost"}"}
+                phx-click="filter_vendor"
+                phx-value-vendor={vendor_name}
+              >
+                {vendor_name}
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+        
     <!-- Active Orders -->
-        <%= if @active_orders != [] do %>
+        <% filtered_active = filter_orders_by_vendor(@active_orders, @selected_vendor) %>
+        <%= if filtered_active != [] do %>
           <h3 class="text-xl font-bold mb-4">Active Orders</h3>
           <div class="space-y-4 mb-8">
-            <%= for order <- @active_orders do %>
+            <%= for order <- filtered_active do %>
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body">
                   <div class="flex justify-between items-start mb-4">
                     <div>
                       <h4 class="text-lg font-bold">{order.vendor.name}</h4>
                       <p class="text-sm text-base-content/70">Order #{order.order_number}</p>
+                      <% food_items =
+                        Enum.filter(order.order_items, &(&1.menu_item.category == "food")) %>
+                      <% drink_items =
+                        Enum.filter(order.order_items, &(&1.menu_item.category == "drinks")) %>
+                      <div class="flex gap-2 mt-1">
+                        <%= if length(food_items) > 0 do %>
+                          <span class="badge badge-sm badge-neutral">
+                            {length(food_items)} Food
+                          </span>
+                        <% end %>
+                        <%= if length(drink_items) > 0 do %>
+                          <span class="badge badge-sm badge-info">
+                            {length(drink_items)} Drinks
+                          </span>
+                        <% end %>
+                      </div>
                     </div>
                     <span class={status_badge_class(order.status) <> " badge-lg"}>
                       {status_text(order.status)}
@@ -138,10 +208,11 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         <% end %>
         
     <!-- Completed Orders -->
-        <%= if @completed_orders != [] do %>
+        <% filtered_completed = filter_orders_by_vendor(@completed_orders, @selected_vendor) %>
+        <%= if filtered_completed != [] do %>
           <h3 class="text-xl font-bold mb-4">Completed Orders</h3>
           <div class="space-y-4">
-            <%= for order <- @completed_orders do %>
+            <%= for order <- filtered_completed do %>
               <div class="card bg-base-100 shadow-xl opacity-75">
                 <div class="card-body">
                   <div class="flex justify-between items-start">
@@ -152,7 +223,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
                     <div class="text-right">
                       <span class="badge badge-success">Completed</span>
                       <p class="text-sm text-base-content/70 mt-1">
-                        {Calendar.strftime(order.updated_at, "%I:%M %p")}
+                        {TimezoneHelper.format_malaysian_time_only(order.updated_at)}
                       </p>
                     </div>
                   </div>
@@ -198,14 +269,12 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   @impl true
   def mount(params, _session, socket) do
     phone = params["phone"]
-    name = params["name"]
     table_number = params["table"]
     order_ids_param = params["order_ids"]
 
     if phone && table_number do
       customer_info = %{
         phone: phone,
-        name: if(name && name != "", do: name, else: nil),
         table_number: String.to_integer(table_number)
       }
 
@@ -249,10 +318,23 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
        socket
        |> assign(customer_info: customer_info)
        |> assign(active_orders: active_orders)
-       |> assign(completed_orders: completed_orders)}
+       |> assign(completed_orders: completed_orders)
+       |> assign(selected_vendor: nil)}
     else
       {:ok, push_navigate(socket, to: ~p"/")}
     end
+  end
+
+  @impl true
+  def handle_event("filter_vendor", %{"vendor" => vendor}, socket) do
+    selected = if vendor == "", do: nil, else: vendor
+    {:noreply, assign(socket, selected_vendor: selected)}
+  end
+
+  @impl true
+  def handle_info({:order_updated, _updated_order}, socket) do
+    # Refresh orders when an order is updated
+    handle_info(:refresh_orders, socket)
   end
 
   @impl true
@@ -329,5 +411,11 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
     float_string
     |> String.to_float()
     |> :erlang.float_to_binary(decimals: 2)
+  end
+
+  defp filter_orders_by_vendor(orders, nil), do: orders
+
+  defp filter_orders_by_vendor(orders, vendor_name) do
+    Enum.filter(orders, &(&1.vendor.name == vendor_name))
   end
 end
