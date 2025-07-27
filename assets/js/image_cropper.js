@@ -3,12 +3,19 @@
 
 export default {
   mounted() {
+    console.log("ImageCropper hook mounted");
+
     this.cropperContainer = this.el.querySelector("[data-cropper-container]");
     this.imageInput = this.el.querySelector("[data-image-input]");
     this.cropButton = this.el.querySelector("[data-crop-button]");
     this.canvas = this.el.querySelector("[data-crop-canvas]");
     this.preview = this.el.querySelector("[data-crop-preview]");
     this.controls = this.el.querySelector("[data-crop-controls]");
+
+    if (!this.canvas) {
+      console.error("Canvas element not found");
+      return;
+    }
 
     this.ctx = this.canvas.getContext("2d");
     this.image = new Image();
@@ -26,9 +33,13 @@ export default {
     this.resizeHandle = null;
 
     // Set up event listeners
-    this.imageInput.addEventListener("change", (e) =>
-      this.handleImageSelect(e),
-    );
+    if (this.imageInput) {
+      this.imageInput.addEventListener("change", (e) =>
+        this.handleImageSelect(e),
+      );
+    } else {
+      console.error("Image input element not found");
+    }
     this.canvas.addEventListener("mousedown", (e) => this.handleMouseDown(e));
     this.canvas.addEventListener("mousemove", (e) => this.handleMouseMove(e));
     this.canvas.addEventListener("mouseup", (e) => this.handleMouseUp(e));
@@ -58,16 +69,25 @@ export default {
   },
 
   handleImageSelect(e) {
+    console.log("Image selected", e.target.files);
     const file = e.target.files[0];
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file || !file.type.startsWith("image/")) {
+      console.log("No valid image file selected");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
       this.image.onload = () => {
+        console.log("Image loaded successfully");
         this.setupCanvas();
         this.drawCanvas();
-        this.canvas.classList.remove("hidden");
-        this.controls.classList.remove("hidden");
+        if (this.canvas) {
+          this.canvas.classList.remove("hidden");
+        }
+        if (this.controls) {
+          this.controls.classList.remove("hidden");
+        }
         this.pushEvent("image_loaded", {
           width: this.image.width,
           height: this.image.height,

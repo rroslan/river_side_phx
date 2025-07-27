@@ -142,8 +142,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                     class="hidden"
                     id="image-file-input"
                   />
-                  <canvas data-crop-canvas class="w-full border-2 border-base-300 rounded-lg hidden">
-                  </canvas>
+                  <canvas data-crop-canvas class="w-full border-2 border-base-300 rounded-lg hidden"></canvas>
                   
     <!-- Crop Controls -->
                   <div data-crop-controls class="hidden mt-4 space-y-4">
