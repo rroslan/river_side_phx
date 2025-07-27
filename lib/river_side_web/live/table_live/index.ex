@@ -185,30 +185,6 @@ defmodule RiverSideWeb.TableLive.Index do
             <span>{Phoenix.Flash.get(@flash, :info)}</span>
           </div>
         <% end %>
-        
-    <!-- Simulation Mode Banner -->
-        <div class="alert alert-info shadow-lg mb-6">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            class="stroke-current flex-shrink-0 w-6 h-6"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            >
-            </path>
-          </svg>
-          <div>
-            <h3 class="font-bold">Simulation Mode</h3>
-            <div class="text-xs">
-              All tables are available for testing. Select any table to begin the customer ordering experience.
-            </div>
-          </div>
-        </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
           <%= for table_number <- 1..20 do %>

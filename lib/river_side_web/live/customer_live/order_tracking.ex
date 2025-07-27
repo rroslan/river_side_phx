@@ -2,7 +2,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
-  alias RiverSideWeb.Helpers.TimezoneHelper
+  alias RiverSideWeb.Helpers.OrderStatusHelper
 
   @impl true
   def render(assigns) do
@@ -58,7 +58,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
             </div>
             
     <!-- Vendor Summary -->
-            <% all_orders = @active_orders ++ @completed_orders %>
+            <% all_orders = @active_orders %>
             <%= if length(all_orders) > 0 do %>
               <div class="divider"></div>
               <div>
@@ -76,8 +76,8 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
                       </div>
                       <div class="flex gap-1 mt-1">
                         <%= for order <- vendor_orders do %>
-                          <span class={status_badge_class(order.status) <> " badge-xs"}>
-                            {status_text(order.status)}
+                          <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-xs"}>
+                            {OrderStatusHelper.status_text(order.status)}
                           </span>
                         <% end %>
                       </div>
@@ -91,7 +91,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         
     <!-- Vendor Filter -->
         <% all_vendors =
-          (@active_orders ++ @completed_orders) |> Enum.map(& &1.vendor.name) |> Enum.uniq() %>
+          @active_orders |> Enum.map(& &1.vendor.name) |> Enum.uniq() %>
         <%= if length(all_vendors) > 1 do %>
           <div class="flex gap-2 mb-4 overflow-x-auto">
             <button
@@ -142,8 +142,8 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
                         <% end %>
                       </div>
                     </div>
-                    <span class={status_badge_class(order.status) <> " badge-lg"}>
-                      {status_text(order.status)}
+                    <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-lg"}>
+                      {OrderStatusHelper.status_text(order.status)}
                     </span>
                   </div>
                   
@@ -206,37 +206,8 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
             <% end %>
           </div>
         <% end %>
-        
-    <!-- Completed Orders -->
-        <% filtered_completed = filter_orders_by_vendor(@completed_orders, @selected_vendor) %>
-        <%= if filtered_completed != [] do %>
-          <h3 class="text-xl font-bold mb-4">Completed Orders</h3>
-          <div class="space-y-4">
-            <%= for order <- filtered_completed do %>
-              <div class="card bg-base-100 shadow-xl opacity-75">
-                <div class="card-body">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <h4 class="font-bold">{order.vendor.name}</h4>
-                      <p class="text-sm text-base-content/70">Order #{order.order_number}</p>
-                    </div>
-                    <div class="text-right">
-                      <span class="badge badge-success">Completed</span>
-                      <p class="text-sm text-base-content/70 mt-1">
-                        {TimezoneHelper.format_malaysian_time_only(order.updated_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div class="mt-2">
-                    <span class="font-bold">Total: RM {format_currency(order.total_amount)}</span>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
 
-        <%= if @active_orders == [] and @completed_orders == [] do %>
+        <%= if @active_orders == [] do %>
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body text-center">
               <svg
@@ -303,9 +274,9 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         Vendors.subscribe_to_order_updates(order.id)
       end)
 
-      # Separate active and completed orders
-      {active_orders, completed_orders} =
-        Enum.split_with(orders, fn order ->
+      # Only show active orders to customers (not completed ones)
+      active_orders =
+        Enum.filter(orders, fn order ->
           order.status in ["pending", "preparing", "ready"]
         end)
 
@@ -318,7 +289,7 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
        socket
        |> assign(customer_info: customer_info)
        |> assign(active_orders: active_orders)
-       |> assign(completed_orders: completed_orders)
+       |> assign(completed_orders: [])
        |> assign(selected_vendor: nil)}
     else
       {:ok, push_navigate(socket, to: ~p"/")}
@@ -332,12 +303,6 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   end
 
   @impl true
-  def handle_info({:order_updated, _updated_order}, socket) do
-    # Refresh orders when an order is updated
-    handle_info(:refresh_orders, socket)
-  end
-
-  @impl true
   def handle_info(:refresh_orders, socket) do
     # Refresh orders from database
     orders =
@@ -346,57 +311,42 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         socket.assigns.customer_info.table_number
       )
 
-    {active_orders, completed_orders} =
-      Enum.split_with(orders, fn order ->
+    active_orders =
+      Enum.filter(orders, fn order ->
         order.status in ["pending", "preparing", "ready"]
       end)
 
     {:noreply,
      socket
      |> assign(active_orders: active_orders)
-     |> assign(completed_orders: completed_orders)}
+     |> assign(completed_orders: [])}
   end
 
   @impl true
   def handle_info({:order_updated, updated_order}, socket) do
+    IO.puts(
+      "Customer tracking received order update: Order ##{updated_order.order_number}, Status: #{updated_order.status}, Paid: #{updated_order.paid}"
+    )
+
     # Update the specific order in our lists
     active_orders =
       Enum.map(socket.assigns.active_orders, fn order ->
         if order.id == updated_order.id, do: updated_order, else: order
       end)
 
-    completed_orders =
-      Enum.map(socket.assigns.completed_orders, fn order ->
-        if order.id == updated_order.id, do: updated_order, else: order
-      end)
-
-    # Re-split orders based on status
-    all_orders = active_orders ++ completed_orders
-
-    {new_active, new_completed} =
-      Enum.split_with(all_orders, fn order ->
+    # Keep only pending, preparing, and ready orders in active list for customers
+    new_active =
+      Enum.filter(active_orders, fn order ->
         order.status in ["pending", "preparing", "ready"]
       end)
+
+    IO.puts("After update - Active orders: #{length(new_active)}")
 
     {:noreply,
      socket
      |> assign(active_orders: new_active)
-     |> assign(completed_orders: new_completed)}
+     |> assign(completed_orders: [])}
   end
-
-  defp status_badge_class("pending"), do: "badge badge-warning"
-  defp status_badge_class("preparing"), do: "badge badge-info"
-  defp status_badge_class("ready"), do: "badge badge-success"
-  defp status_badge_class("completed"), do: "badge badge-neutral"
-  defp status_badge_class("cancelled"), do: "badge badge-error"
-  defp status_badge_class(_), do: "badge"
-
-  defp status_text("pending"), do: "Pending"
-  defp status_text("preparing"), do: "Preparing"
-  defp status_text("ready"), do: "Ready to Collect!"
-  defp status_text("completed"), do: "Completed"
-  defp status_text("cancelled"), do: "Cancelled"
-  defp status_text(_), do: "Unknown"
 
   defp format_currency(decimal) do
     string_value = Decimal.to_string(decimal, :normal)

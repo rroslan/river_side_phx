@@ -3,6 +3,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
   alias RiverSide.Vendors
   alias RiverSideWeb.Helpers.TimezoneHelper
+  alias RiverSideWeb.Helpers.OrderStatusHelper
 
   @impl true
   def render(assigns) do
@@ -252,8 +253,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                     <div class="card-body">
                       <div class="flex justify-between items-start">
                         <h2 class="card-title">Table {order.table_number}</h2>
-                        <div class={"badge badge-lg #{status_badge_class(order.status)}"}>
-                          {String.capitalize(order.status)}
+                        <div class={OrderStatusHelper.status_badge_class(order.status)}>
+                          {OrderStatusHelper.status_text(order.status)}
                         </div>
                       </div>
                       <p class="text-sm opacity-70">Order #{order.order_number}</p>
@@ -295,11 +296,11 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                               phx-value-id={order.id}
                               phx-value-status="ready"
                             >
-                              Mark Ready
+                              Ready for Pickup
                             </button>
                           <% "ready" -> %>
                             <span class="text-sm text-success">
-                              Ready for pickup
+                              {OrderStatusHelper.status_text(order.status)}
                             </span>
                         <% end %>
                         <button
@@ -727,10 +728,4 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     |> String.to_float()
     |> :erlang.float_to_binary(decimals: 2)
   end
-
-  defp status_badge_class("pending"), do: "badge-warning"
-  defp status_badge_class("preparing"), do: "badge-info"
-  defp status_badge_class("ready"), do: "badge-success"
-  defp status_badge_class("completed"), do: "badge-ghost"
-  defp status_badge_class("cancelled"), do: "badge-error"
 end

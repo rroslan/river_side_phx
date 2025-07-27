@@ -4,6 +4,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   alias RiverSide.Vendors
   alias RiverSide.Tables
   alias RiverSideWeb.Helpers.TimezoneHelper
+  alias RiverSideWeb.Helpers.OrderStatusHelper
 
   @impl true
   def render(assigns) do
@@ -131,21 +132,41 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
                       <div class="mt-2 space-y-2">
                         <%= for order <- table_data.orders do %>
-                          <div class="p-2 bg-base-100 rounded">
+                          <div class={"p-2 rounded #{OrderStatusHelper.status_bg_class(order.status, order.paid)}"}>
                             <div class="flex justify-between items-center">
                               <div>
                                 <p class="font-semibold text-sm">{order.vendor.name}</p>
                                 <p class="text-xs text-base-content/60">#{order.order_number}</p>
                               </div>
                               <div class="text-right">
-                                <span class={"badge badge-sm #{status_badge_class(order.status)}"}>
-                                  {String.capitalize(order.status)}
+                                <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-sm"}>
+                                  {OrderStatusHelper.status_text(order.status)}
                                 </span>
+                                <%= cond do %>
+                                  <% order.status == "ready" && order.paid -> %>
+                                    <div class="text-xs text-success font-semibold">
+                                      ✓ Ready to complete
+                                    </div>
+                                  <% order.status == "ready" && !order.paid -> %>
+                                    <div class="text-xs text-warning font-semibold">
+                                      ⚠ Awaiting payment
+                                    </div>
+                                  <% true -> %>
+                                <% end %>
                                 <p class="text-sm font-semibold mt-1">
                                   RM {format_currency(order.total_amount)}
                                 </p>
                               </div>
                             </div>
+                            <%= if order.status == "ready" && !order.paid do %>
+                              <button
+                                phx-click="mark_as_paid"
+                                phx-value-id={order.id}
+                                class="btn btn-warning btn-xs w-full mt-2"
+                              >
+                                Mark as Paid
+                              </button>
+                            <% end %>
                           </div>
                         <% end %>
                       </div>
@@ -158,6 +179,13 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                       </div>
 
                       <div class="card-actions justify-end mt-4">
+                        <% ready_unpaid_count =
+                          Enum.count(table_data.orders, fn o -> o.status == "ready" && !o.paid end) %>
+                        <%= if ready_unpaid_count > 0 do %>
+                          <div class="text-xs text-warning font-semibold">
+                            {ready_unpaid_count} ready to pay
+                          </div>
+                        <% end %>
                         <button
                           phx-click="view_table_orders"
                           phx-value-table={table_number}
@@ -177,7 +205,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     <!-- Recent Completed Orders -->
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
-            <h2 class="card-title mb-4">Recent Completed Orders</h2>
+            <h2 class="card-title mb-4">Recent Completed Orders (Including Paid Orders)</h2>
             <div class="overflow-x-auto">
               <table class="table w-full">
                 <thead>
@@ -199,9 +227,12 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                       <td>{TimezoneHelper.format_malaysian_time_only(order.inserted_at)}</td>
                       <td class="font-semibold">RM {format_currency(order.total_amount)}</td>
                       <td>
-                        <span class={status_badge_class(order.status)}>
-                          {String.capitalize(order.status)}
+                        <span class={OrderStatusHelper.status_badge_class(order.status)}>
+                          {OrderStatusHelper.status_text(order.status)}
                         </span>
+                        <%= if order.paid do %>
+                          <span class="badge badge-success badge-sm ml-1">Paid</span>
+                        <% end %>
                       </td>
                     </tr>
                   <% end %>
@@ -230,8 +261,8 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                   </div>
                   <div>
                     <p class="text-sm text-base-content/70">Status</p>
-                    <span class={status_badge_class(@selected_order.status)}>
-                      {String.capitalize(@selected_order.status)}
+                    <span class={OrderStatusHelper.status_badge_class(@selected_order.status)}>
+                      {OrderStatusHelper.status_text(@selected_order.status)}
                     </span>
                   </div>
                   <%= if @selected_order do %>
@@ -244,7 +275,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                         <div class="text-sm">
                           <%= for order <- active_orders do %>
                             <div class={"badge #{if order.id == @selected_order.id, do: "badge-primary", else: "badge-ghost"} badge-sm mr-1"}>
-                              {order.vendor.name}: {String.capitalize(order.status)}
+                              {order.vendor.name}: {OrderStatusHelper.status_text(order.status)}
                             </div>
                           <% end %>
                         </div>
@@ -321,19 +352,15 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <h3 class="font-bold text-lg mb-4">
               Table #{@selected_table} - All Orders
             </h3>
-
-            <% table_orders = Vendors.list_orders_for_table(@selected_table) %>
-            <% active_orders =
-              Enum.filter(table_orders, &(&1.status not in ["completed", "cancelled"])) %>
             <% total_amount =
-              Enum.reduce(active_orders, Decimal.new("0"), fn order, acc ->
+              Enum.reduce(@table_orders || [], Decimal.new("0"), fn order, acc ->
                 Decimal.add(acc, order.total_amount)
               end) %>
 
             <div class="stats stats-vertical lg:stats-horizontal shadow mb-4 w-full">
               <div class="stat">
                 <div class="stat-title">Active Orders</div>
-                <div class="stat-value">{length(active_orders)}</div>
+                <div class="stat-value">{length(@table_orders || [])}</div>
               </div>
               <div class="stat">
                 <div class="stat-title">Total Amount</div>
@@ -342,12 +369,12 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
               <div class="stat">
                 <div class="stat-title">Payment Status</div>
                 <div class="stat-value text-sm">
-                  <%= if Enum.all?(active_orders, & &1.paid) do %>
+                  <%= if @table_orders && Enum.all?(@table_orders, & &1.paid) do %>
                     <span class="badge badge-success badge-lg">All Paid</span>
                   <% else %>
-                    <% paid_count = Enum.count(active_orders, & &1.paid) %>
+                    <% paid_count = Enum.count(@table_orders || [], & &1.paid) %>
                     <span class="badge badge-warning badge-lg">
-                      {paid_count}/{length(active_orders)} Paid
+                      {paid_count}/{length(@table_orders || [])} Paid
                     </span>
                   <% end %>
                 </div>
@@ -355,32 +382,50 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             </div>
 
             <div class="space-y-4 max-h-96 overflow-y-auto">
-              <%= for order <- active_orders do %>
-                <div class="card bg-base-200">
+              <%= for order <- @table_orders || [] do %>
+                <div class={"card #{cond do
+                  order.status == "ready" && order.paid -> "bg-success/20 border-2 border-success"
+                  order.status == "ready" && !order.paid -> "bg-warning/20 border-2 border-warning"
+                  true -> "bg-base-200"
+                end}"}>
                   <div class="card-body p-4">
                     <div class="flex justify-between items-start">
                       <div>
                         <h4 class="font-semibold">{order.vendor.name}</h4>
                         <p class="text-sm text-base-content/70">Order #{order.order_number}</p>
+                        <%= if order.status == "ready" && order.paid do %>
+                          <p class="text-xs text-success font-semibold">✓ Ready to complete</p>
+                        <% end %>
                       </div>
                       <div class="text-right">
-                        <span class={status_badge_class(order.status)}>
-                          {String.capitalize(order.status)}
+                        <span class={OrderStatusHelper.status_badge_class(order.status)}>
+                          {OrderStatusHelper.status_text(order.status)}
                         </span>
                         <%= if order.paid do %>
                           <span class="badge badge-success badge-sm ml-1">Paid</span>
                         <% end %>
                       </div>
+                    </div>
+
+                    <div class="mt-2 space-y-2">
                       <%= if order.status == "ready" && !order.paid do %>
-                        <div class="mt-2">
-                          <button
-                            phx-click="mark_as_paid"
-                            phx-value-id={order.id}
-                            class="btn btn-warning btn-xs"
-                          >
-                            Mark as Paid
-                          </button>
-                        </div>
+                        <button
+                          phx-click="mark_as_paid"
+                          phx-value-id={order.id}
+                          class="btn btn-warning btn-sm btn-block"
+                        >
+                          Mark as Paid
+                        </button>
+                      <% end %>
+
+                      <%= if order.status == "ready" && order.paid do %>
+                        <button
+                          phx-click="complete_order"
+                          phx-value-id={order.id}
+                          class="btn btn-success btn-sm btn-block"
+                        >
+                          Complete Order
+                        </button>
                       <% end %>
                     </div>
 
@@ -412,8 +457,8 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             </div>
 
             <div class="modal-action">
-              <%= if Enum.all?(active_orders, &(&1.status == "ready")) do %>
-                <%= if not Enum.all?(active_orders, & &1.paid) do %>
+              <%= if @table_orders && Enum.all?(@table_orders, &(&1.status == "ready")) do %>
+                <%= if not Enum.all?(@table_orders, & &1.paid) do %>
                   <button
                     phx-click="pay_all_table_orders"
                     phx-value-table={@selected_table}
@@ -434,14 +479,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                       />
                     </svg>
                     Pay All Orders
-                  </button>
-                <% else %>
-                  <button
-                    phx-click="release_table"
-                    phx-value-table={@selected_table}
-                    class="btn btn-success"
-                  >
-                    Release Table
                   </button>
                 <% end %>
               <% end %>
@@ -465,6 +502,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
        socket
        |> assign(show_order_modal: false, selected_order: nil)
        |> assign(show_table_modal: false, selected_table: nil)
+       |> assign(table_orders: [])
        |> load_orders()
        |> load_stats()}
     else
@@ -490,36 +528,46 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   def handle_event("mark_as_paid", %{"id" => order_id}, socket) do
     order = Vendors.get_order!(order_id)
 
+    IO.puts("Marking order #{order_id} as paid. Current paid status: #{order.paid}")
+
     case Vendors.mark_order_as_paid(order) do
       {:ok, updated_order} ->
-        socket = load_orders(socket)
+        IO.puts(
+          "Order #{order_id} marked as paid successfully. New paid status: #{updated_order.paid}"
+        )
 
-        # Update modal if viewing this order
-        socket =
-          if socket.assigns.show_order_modal &&
-               socket.assigns.selected_order.id == updated_order.id do
-            assign(socket, selected_order: updated_order)
-          else
-            socket
+        # Reload the order to ensure we have the latest data with all associations
+        fresh_order = Vendors.get_order!(updated_order.id)
+
+        # If order is ready, auto-complete it
+        IO.puts("Order status after marking as paid: #{fresh_order.status}")
+
+        if fresh_order.status == "ready" do
+          IO.puts("Attempting to auto-complete order #{fresh_order.id}")
+
+          case Vendors.update_order_status(fresh_order, %{status: "completed"}) do
+            {:ok, completed_order} ->
+              IO.puts("Successfully completed order #{completed_order.id}")
+
+              handle_order_completion(
+                socket,
+                completed_order,
+                "Order marked as paid and completed"
+              )
+
+            {:error, changeset} ->
+              IO.puts("Failed to complete order: #{inspect(changeset.errors)}")
+              socket = load_orders(socket)
+              update_modals_after_payment(socket, fresh_order)
           end
+        else
+          socket = load_orders(socket)
 
-        # Update table modal if viewing the table that contains this order
-        socket =
-          if socket.assigns.show_table_modal &&
-               socket.assigns.selected_table == updated_order.table_number do
-            table_orders =
-              socket.assigns.active_orders
-              |> Enum.filter(&(&1.table_number == updated_order.table_number))
-              |> Enum.sort_by(& &1.inserted_at, :asc)
-
-            assign(socket, :table_orders, table_orders)
-          else
-            socket
-          end
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Order #{order.order_number} marked as paid")}
+          {:noreply,
+           socket
+           |> update_modals_after_payment(updated_order)
+           |> put_flash(:info, "Order #{order.order_number} marked as paid")}
+        end
 
       {:error, _} ->
         {:noreply,
@@ -568,6 +616,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
      |> load_orders()}
   end
 
+  # This function is kept for backward compatibility but should not be used
   def handle_event("release_table", %{"table" => table_number}, socket) do
     # Complete all orders and release table
     orders =
@@ -607,6 +656,21 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
              |> assign(:selected_table, nil)
              |> load_orders()}
         end
+    end
+  end
+
+  def handle_event("complete_order", %{"id" => order_id}, socket) do
+    order = Vendors.get_order!(order_id)
+
+    case Vendors.update_order_status(order, %{status: "completed"}) do
+      {:ok, updated_order} ->
+        handle_order_completion(socket, updated_order, "Order #{order.order_number} completed")
+
+      {:error, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to complete order")
+         |> load_orders()}
     end
   end
 
@@ -719,10 +783,13 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
       Vendors.list_active_orders(nil)
       |> Enum.sort_by(& &1.inserted_at, :asc)
 
+    # For testing, also include paid orders that are ready (should be completed but aren't)
     completed_orders =
       Vendors.list_todays_orders(nil)
-      |> Enum.filter(&(&1.status in ["completed", "cancelled"]))
-      |> Enum.sort_by(& &1.inserted_at, :desc)
+      |> Enum.filter(
+        &(&1.status in ["completed", "cancelled"] || (&1.status == "ready" && &1.paid))
+      )
+      |> Enum.sort_by(& &1.updated_at, :desc)
       |> Enum.take(10)
 
     # Group active orders by table
@@ -750,6 +817,13 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
       all_paid = Enum.all?(table_orders, & &1.paid)
       all_ready = Enum.all?(table_orders, &(&1.status == "ready"))
+
+      # Debug logging
+      IO.puts("Table #{table_number}: Orders: #{length(table_orders)}, All paid: #{all_paid}")
+
+      Enum.each(table_orders, fn order ->
+        IO.puts("  Order #{order.order_number}: paid=#{order.paid}, status=#{order.status}")
+      end)
 
       {table_number,
        %{
@@ -793,10 +867,83 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
   defp format_currency(nil), do: "0.00"
 
-  defp status_badge_class("pending"), do: "badge badge-warning"
-  defp status_badge_class("preparing"), do: "badge badge-info"
-  defp status_badge_class("ready"), do: "badge badge-success"
-  defp status_badge_class("completed"), do: "badge badge-neutral"
-  defp status_badge_class("cancelled"), do: "badge badge-error"
-  defp status_badge_class(_), do: "badge"
+  defp handle_order_completion(socket, order, success_message) do
+    table_number = order.table_number
+    IO.puts("Handling order completion for table #{table_number}")
+
+    if Vendors.all_orders_completed_for_table?(table_number) do
+      IO.puts("All orders completed for table #{table_number}, attempting to release")
+      # Auto-release the table
+      case Tables.get_table_by_number(String.to_integer(table_number)) do
+        nil ->
+          IO.puts("Table #{table_number} not found in database")
+
+          {:noreply,
+           socket
+           |> put_flash(:info, success_message)
+           |> load_orders()}
+
+        table ->
+          IO.puts(
+            "Found table #{table_number}, attempting to release. Current occupied_at: #{inspect(table.occupied_at)}"
+          )
+
+          case Tables.release_table(table) do
+            {:ok, released_table} ->
+              IO.puts(
+                "Successfully released table #{table_number}. New occupied_at: #{inspect(released_table.occupied_at)}"
+              )
+
+              {:noreply,
+               socket
+               |> put_flash(
+                 :info,
+                 "#{success_message}. Table #{table_number} released automatically"
+               )
+               |> assign(:show_table_modal, false)
+               |> assign(:selected_table, nil)
+               |> load_orders()}
+
+            {:error, changeset} ->
+              IO.puts("Failed to release table #{table_number}: #{inspect(changeset.errors)}")
+
+              {:noreply,
+               socket
+               |> put_flash(:info, success_message)
+               |> load_orders()}
+          end
+      end
+    else
+      IO.puts("Not all orders completed for table #{table_number}, not releasing")
+
+      {:noreply,
+       socket
+       |> put_flash(:info, success_message)
+       |> load_orders()}
+    end
+  end
+
+  defp update_modals_after_payment(socket, updated_order) do
+    # Update modal if viewing this order
+    socket =
+      if socket.assigns.show_order_modal &&
+           socket.assigns.selected_order.id == updated_order.id do
+        assign(socket, selected_order: updated_order)
+      else
+        socket
+      end
+
+    # Update table modal if viewing the table that contains this order
+    if socket.assigns.show_table_modal &&
+         socket.assigns.selected_table == updated_order.table_number do
+      table_orders =
+        socket.assigns.active_orders
+        |> Enum.filter(&(&1.table_number == updated_order.table_number))
+        |> Enum.sort_by(& &1.inserted_at, :asc)
+
+      assign(socket, :table_orders, table_orders)
+    else
+      socket
+    end
+  end
 end
