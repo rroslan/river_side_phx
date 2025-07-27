@@ -371,6 +371,17 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                           <span class="badge badge-success badge-sm ml-1">Paid</span>
                         <% end %>
                       </div>
+                      <%= if order.status == "ready" && !order.paid do %>
+                        <div class="mt-2">
+                          <button
+                            phx-click="mark_as_paid"
+                            phx-value-id={order.id}
+                            class="btn btn-warning btn-xs"
+                          >
+                            Mark as Paid
+                          </button>
+                        </div>
+                      <% end %>
                     </div>
 
                     <div class="divider my-2"></div>
@@ -481,17 +492,34 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
     case Vendors.mark_order_as_paid(order) do
       {:ok, updated_order} ->
+        socket = load_orders(socket)
+
+        # Update modal if viewing this order
         socket =
-          if socket.assigns.show_order_modal do
+          if socket.assigns.show_order_modal &&
+               socket.assigns.selected_order.id == updated_order.id do
             assign(socket, selected_order: updated_order)
+          else
+            socket
+          end
+
+        # Update table modal if viewing the table that contains this order
+        socket =
+          if socket.assigns.show_table_modal &&
+               socket.assigns.selected_table == updated_order.table_number do
+            table_orders =
+              socket.assigns.active_orders
+              |> Enum.filter(&(&1.table_number == updated_order.table_number))
+              |> Enum.sort_by(& &1.inserted_at, :asc)
+
+            assign(socket, :table_orders, table_orders)
           else
             socket
           end
 
         {:noreply,
          socket
-         |> put_flash(:info, "Order #{order.order_number} marked as paid")
-         |> load_orders()}
+         |> put_flash(:info, "Order #{order.order_number} marked as paid")}
 
       {:error, _} ->
         {:noreply,
