@@ -682,79 +682,86 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
   @impl true
   def mount(_params, _session, socket) do
-    if socket.assigns.current_scope.user.is_vendor do
-      vendor = Vendors.get_vendor_by_user_id(socket.assigns.current_scope.user.id)
+    # Vendor is already loaded in scope!
+    vendor = socket.assigns.current_scope.vendor
 
-      if vendor do
-        # Subscribe to real-time updates
-        Vendors.subscribe_to_vendor_orders(vendor.id)
+    if vendor do
+      # Subscribe to real-time updates
+      Vendors.subscribe_to_vendor_orders(vendor.id)
 
-        # Load initial data
-        menu_items = Vendors.list_menu_items(vendor.id)
-        active_orders = Vendors.list_active_orders(vendor.id)
+      # Load initial data
+      menu_items = Vendors.list_menu_items(vendor.id)
+      active_orders = Vendors.list_active_orders(vendor.id)
 
-        completed_orders =
-          Vendors.list_todays_orders(vendor.id) |> Enum.filter(&(&1.status == "completed"))
+      completed_orders =
+        Vendors.list_todays_orders(vendor.id) |> Enum.filter(&(&1.status == "completed"))
 
-        sales_stats = Vendors.get_vendor_sales_stats(vendor.id)
+      sales_stats = Vendors.get_vendor_sales_stats(vendor.id)
 
-        {:ok,
-         socket
-         |> assign(vendor: vendor)
-         |> assign(menu_items: menu_items)
-         |> assign(active_orders: active_orders)
-         |> assign(completed_orders: completed_orders)
-         |> assign(sales_stats: sales_stats)
-         |> assign(active_tab: "orders")}
-      else
-        # Create a default vendor profile
-        case Vendors.create_vendor(%{
-               name: "New Vendor",
-               user_id: socket.assigns.current_scope.user.id
-             }) do
-          {:ok, vendor} ->
-            {:ok,
-             socket
-             |> assign(vendor: vendor)
-             |> assign(menu_items: [])
-             |> assign(active_orders: [])
-             |> assign(completed_orders: [])
-             |> assign(
-               sales_stats: %{
-                 today: %{count: 0, total: Decimal.new("0")},
-                 month: %{count: 0, total: Decimal.new("0")},
-                 top_items: []
-               }
-             )
-             |> assign(active_tab: "orders")}
-
-          {:error, _} ->
-            {:ok,
-             socket
-             |> assign(vendor: nil)
-             |> assign(menu_items: [])
-             |> assign(active_orders: [])
-             |> assign(completed_orders: [])
-             |> assign(
-               sales_stats: %{
-                 today: %{count: 0, total: Decimal.new("0")},
-                 month: %{count: 0, total: Decimal.new("0")},
-                 top_items: []
-               }
-             )
-             |> assign(active_tab: "orders")}
-        end
-      end
-    else
       {:ok,
        socket
-       |> put_flash(:error, "You are not authorized to access this page")
-       |> push_navigate(to: ~p"/")}
+       |> assign(vendor: vendor)
+       |> assign(menu_items: menu_items)
+       |> assign(active_orders: active_orders)
+       |> assign(completed_orders: completed_orders)
+       |> assign(sales_stats: sales_stats)
+       |> assign(active_tab: "orders")}
+    else
+      # Create a default vendor profile
+      case Vendors.create_vendor(%{
+             name: "New Vendor",
+             user_id: socket.assigns.current_scope.user.id,
+             active: true
+           }) do
+        {:ok, vendor} ->
+          {:ok,
+           socket
+           |> assign(vendor: vendor)
+           |> assign(menu_items: [])
+           |> assign(active_orders: [])
+           |> assign(completed_orders: [])
+           |> assign(sales_stats: %{total_sales: 0, total_orders: 0})
+           |> assign(active_tab: "orders")
+           |> put_flash(:info, "Welcome! Please complete your vendor profile.")
+           |> assign(
+             sales_stats: %{
+               today: %{count: 0, total: Decimal.new("0")},
+               month: %{count: 0, total: Decimal.new("0")},
+               top_items: []
+             }
+           )
+           |> assign(active_tab: "orders")}
+
+        {:error, _} ->
+          {:ok,
+           socket
+           |> assign(vendor: nil)
+           |> assign(menu_items: [])
+           |> assign(active_orders: [])
+           |> assign(completed_orders: [])
+           |> assign(
+             sales_stats: %{
+               today: %{count: 0, total: Decimal.new("0")},
+               month: %{count: 0, total: Decimal.new("0")},
+               top_items: []
+             }
+           )
+           |> assign(active_tab: "orders")}
+      end
     end
   end
 
   @impl true
   def handle_event("set_tab", %{"tab" => tab}, socket) do
+    # Load menu items when switching to menu tab
+    socket =
+      if tab == "menu" and not Map.has_key?(socket.assigns, :menu_items) do
+        menu_items = Vendors.list_menu_items(socket.assigns.vendor.id)
+        assign(socket, menu_items: menu_items)
+      else
+        socket
+      end
+
     {:noreply, assign(socket, active_tab: tab)}
   end
 
@@ -762,26 +769,31 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   def handle_event("update_order_status", %{"id" => id, "status" => status}, socket) do
     order = Vendors.get_order!(id)
 
-    case Vendors.update_order_status(order, %{status: status}) do
-      {:ok, _order} ->
-        # Refresh data
-        active_orders = Vendors.list_active_orders(socket.assigns.vendor.id)
+    # Use scope for authorization
+    if RiverSide.Accounts.Scope.can?(socket.assigns.current_scope, :update_status, order) do
+      case Vendors.update_order_status(order, %{status: status}) do
+        {:ok, _order} ->
+          # Refresh data
+          active_orders = Vendors.list_active_orders(socket.assigns.vendor.id)
 
-        completed_orders =
-          Vendors.list_todays_orders(socket.assigns.vendor.id)
-          |> Enum.filter(&(&1.status == "completed"))
+          completed_orders =
+            Vendors.list_todays_orders(socket.assigns.vendor.id)
+            |> Enum.filter(&(&1.status == "completed"))
 
-        sales_stats = Vendors.get_vendor_sales_stats(socket.assigns.vendor.id)
+          sales_stats = Vendors.get_vendor_sales_stats(socket.assigns.vendor.id)
 
-        {:noreply,
-         socket
-         |> assign(active_orders: active_orders)
-         |> assign(completed_orders: completed_orders)
-         |> assign(sales_stats: sales_stats)
-         |> put_flash(:info, "Order status updated successfully")}
+          {:noreply,
+           socket
+           |> assign(active_orders: active_orders)
+           |> assign(completed_orders: completed_orders)
+           |> assign(sales_stats: sales_stats)
+           |> put_flash(:info, "Order status updated successfully")}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to update order status")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to update order status")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "You don't have permission to update this order")}
     end
   end
 
@@ -789,21 +801,26 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   def handle_event("toggle_availability", %{"id" => id}, socket) do
     menu_item = Vendors.get_menu_item!(id)
 
-    case Vendors.toggle_menu_item_availability(menu_item) do
-      {:ok, updated_item} ->
-        # Reload all menu items to ensure consistency
-        menu_items = Vendors.list_menu_items(socket.assigns.vendor.id)
+    # Check authorization using scope
+    if RiverSide.Accounts.Scope.can?(socket.assigns.current_scope, :update, menu_item) do
+      case Vendors.toggle_menu_item_availability(menu_item) do
+        {:ok, updated_item} ->
+          # Reload all menu items to ensure consistency
+          menu_items = Vendors.list_menu_items(socket.assigns.vendor.id)
 
-        {:noreply,
-         socket
-         |> assign(menu_items: menu_items)
-         |> put_flash(
-           :info,
-           "#{updated_item.name} is now #{if updated_item.is_available, do: "available", else: "unavailable"}"
-         )}
+          {:noreply,
+           socket
+           |> assign(menu_items: menu_items)
+           |> put_flash(
+             :info,
+             "#{updated_item.name} is now #{if updated_item.is_available, do: "available", else: "unavailable"}"
+           )}
 
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to update availability")}
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to update item")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "You don't have permission to update this item")}
     end
   end
 

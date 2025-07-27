@@ -26,14 +26,27 @@ defmodule RiverSideWeb.Router do
     pipe_through :browser
 
     live_session :public,
-      on_mount: [{RiverSideWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [{RiverSideWeb.UserAuth, :mount_guest_scope}] do
       live "/", TableLive.Index, :index
+    end
+  end
 
-      # Customer routes (no authentication required)
-      live "/customer/checkin/:table_number", CustomerLive.Checkin, :new
-      live "/customer/menu", CustomerLive.Menu, :index
-      live "/customer/cart", CustomerLive.Cart, :index
-      live "/customer/orders", CustomerLive.OrderTracking, :index
+  # Customer routes - active customer session required
+  scope "/customer", RiverSideWeb do
+    pipe_through :browser
+
+    # Checkin doesn't require customer scope
+    live_session :customer_checkin,
+      on_mount: [{RiverSideWeb.UserAuth, :mount_guest_scope}] do
+      live "/checkin/:table_number", CustomerLive.Checkin, :new
+    end
+
+    # Other customer routes require active customer session
+    live_session :customer,
+      on_mount: [{RiverSideWeb.UserAuth, :mount_customer_scope}] do
+      live "/menu", CustomerLive.Menu, :index
+      live "/cart", CustomerLive.Cart, :index
+      live "/orders", CustomerLive.OrderTracking, :index
     end
   end
 
@@ -61,24 +74,48 @@ defmodule RiverSideWeb.Router do
 
   ## Authentication routes
 
+  # User settings routes (any authenticated user)
   scope "/", RiverSideWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    live_session :require_authenticated_user,
+    live_session :authenticated_user,
       on_mount: [{RiverSideWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
-      live "/admin/dashboard", AdminLive.Dashboard, :index
-      live "/admin/vendors", AdminLive.VendorList, :index
+    end
+  end
 
-      # Vendor routes
-      live "/vendor/dashboard", VendorLive.Dashboard, :index
-      live "/vendor/profile/edit", VendorLive.ProfileEdit, :edit
-      live "/vendor/menu/new", VendorLive.MenuItemForm, :new
-      live "/vendor/menu/:id/edit", VendorLive.MenuItemForm, :edit
+  # Admin routes
+  scope "/admin", RiverSideWeb do
+    pipe_through [:browser, :require_authenticated_user]
 
-      # Cashier routes
-      live "/cashier/dashboard", CashierLive.Dashboard, :index
+    live_session :admin,
+      on_mount: [{RiverSideWeb.UserAuth, :require_admin_scope}] do
+      live "/dashboard", AdminLive.Dashboard, :index
+      live "/vendors", AdminLive.VendorList, :index
+    end
+  end
+
+  # Vendor routes
+  scope "/vendor", RiverSideWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :vendor,
+      on_mount: [{RiverSideWeb.UserAuth, :require_vendor_scope}] do
+      live "/dashboard", VendorLive.Dashboard, :index
+      live "/profile/edit", VendorLive.ProfileEdit, :edit
+      live "/menu/new", VendorLive.MenuItemForm, :new
+      live "/menu/:id/edit", VendorLive.MenuItemForm, :edit
+    end
+  end
+
+  # Cashier routes
+  scope "/cashier", RiverSideWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :cashier,
+      on_mount: [{RiverSideWeb.UserAuth, :require_cashier_scope}] do
+      live "/dashboard", CashierLive.Dashboard, :index
     end
   end
 

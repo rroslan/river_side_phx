@@ -519,7 +519,7 @@ defmodule RiverSide.Vendors do
   """
   def list_customer_orders(phone, table_number) do
     from(o in Order,
-      where: o.customer_phone == ^phone and o.table_number == ^table_number,
+      where: o.customer_name == ^phone and o.table_number == ^to_string(table_number),
       order_by: [desc: o.inserted_at],
       preload: [:vendor, order_items: :menu_item]
     )

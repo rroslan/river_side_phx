@@ -266,14 +266,17 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
 
   @impl true
   def mount(params, _session, socket) do
-    phone = params["phone"]
-    table_number = params["table"]
-    order_ids_param = params["order_ids"]
+    # Get customer info from scope
+    scope = socket.assigns.current_scope
 
-    if phone && table_number do
+    if RiverSide.Accounts.Scope.customer?(scope) do
+      phone = RiverSide.Accounts.Scope.customer_phone(scope)
+      table_number = RiverSide.Accounts.Scope.customer_table(scope)
+      order_ids_param = params["order_ids"]
+
       customer_info = %{
         phone: phone,
-        table_number: String.to_integer(table_number)
+        table_number: table_number
       }
 
       # Get order IDs from URL parameters
@@ -288,12 +291,13 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         if order_ids != [] do
           # Get specific orders that were just created
           Enum.map(order_ids, &Vendors.get_order!/1)
+          |> Enum.filter(fn order ->
+            # Ensure customer can only see their own orders
+            RiverSide.Accounts.Scope.can?(scope, :view, order)
+          end)
         else
           # Get all orders for this customer in this session
-          Vendors.list_customer_orders(
-            customer_info.phone,
-            customer_info.table_number
-          )
+          Vendors.list_customer_orders(phone, table_number)
         end
 
       # Subscribe to order updates
@@ -326,22 +330,28 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
 
   @impl true
   def handle_info({:order_updated, updated_order}, socket) do
-    # Update the specific order in our lists
-    active_orders =
-      Enum.map(socket.assigns.active_orders, fn order ->
-        if order.id == updated_order.id, do: updated_order, else: order
-      end)
+    # Check if customer can view this order
+    if RiverSide.Accounts.Scope.can?(socket.assigns.current_scope, :view, updated_order) do
+      # Update the specific order in our lists
+      active_orders =
+        Enum.map(socket.assigns.active_orders, fn order ->
+          if order.id == updated_order.id, do: updated_order, else: order
+        end)
 
-    # Keep only pending, preparing, and ready orders in active list for customers
-    new_active =
-      Enum.filter(active_orders, fn order ->
-        order.status in ["pending", "preparing", "ready"]
-      end)
+      # Keep only pending, preparing, and ready orders in active list for customers
+      new_active =
+        Enum.filter(active_orders, fn order ->
+          order.status in ["pending", "preparing", "ready"]
+        end)
 
-    {:noreply,
-     socket
-     |> assign(active_orders: new_active)
-     |> assign(completed_orders: [])}
+      {:noreply,
+       socket
+       |> assign(active_orders: new_active)
+       |> assign(completed_orders: [])}
+    else
+      # Customer shouldn't see this order update
+      {:noreply, socket}
+    end
   end
 
   defp format_currency(decimal) do

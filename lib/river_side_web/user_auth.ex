@@ -5,7 +5,7 @@ defmodule RiverSideWeb.UserAuth do
   import Phoenix.Controller
 
   alias RiverSide.Accounts
-  alias RiverSide.Accounts.Scope
+  alias RiverSide.Accounts.{Scope, User}
 
   # Make the remember me cookie valid for 14 days. This should match
   # the session validity setting in UserToken.
@@ -41,6 +41,22 @@ defmodule RiverSideWeb.UserAuth do
   end
 
   @doc """
+  Creates a customer session.
+
+  This is used when customers check in with their phone and table number.
+  """
+  def create_customer_session(conn, phone, table_number) do
+    conn
+    |> put_session(:customer_phone, phone)
+    |> put_session(:customer_table, table_number)
+    |> put_session(:customer_session_id, generate_session_id())
+  end
+
+  defp generate_session_id do
+    :crypto.strong_rand_bytes(16) |> Base.encode64()
+  end
+
+  @doc """
   Logs the user out.
 
   It clears all session data for safety. See renew_session.
@@ -71,7 +87,7 @@ defmodule RiverSideWeb.UserAuth do
       |> assign(:current_scope, Scope.for_user(user))
       |> maybe_reissue_user_session_token(user, token_inserted_at)
     else
-      nil -> assign(conn, :current_scope, Scope.for_user(nil))
+      nil -> assign(conn, :current_scope, Scope.for_guest())
     end
   end
 
@@ -120,8 +136,18 @@ defmodule RiverSideWeb.UserAuth do
 
   # Do not renew session if the user is already logged in
   # to prevent CSRF errors or data being lost in tabs that are still open
-  defp renew_session(conn, user) when conn.assigns.current_scope.user.id == user.id do
-    conn
+  defp renew_session(conn, user) when is_struct(user, User) do
+    case conn.assigns[:current_scope] do
+      %Scope{user: %User{id: user_id}} when user_id == user.id ->
+        conn
+
+      _ ->
+        renew_session_impl(conn, user)
+    end
+  end
+
+  defp renew_session(conn, nil) do
+    renew_session_impl(conn, nil)
   end
 
   # This function renews the session ID and erases the whole
@@ -130,7 +156,7 @@ defmodule RiverSideWeb.UserAuth do
   # you must explicitly fetch the session data before clearing
   # and then immediately set it after clearing, for example:
   #
-  #     defp renew_session(conn, _user) do
+  #     defp renew_session_impl(conn, _user) do
   #       delete_csrf_token()
   #       preferred_locale = get_session(conn, :preferred_locale)
   #
@@ -140,7 +166,7 @@ defmodule RiverSideWeb.UserAuth do
   #       |> put_session(:preferred_locale, preferred_locale)
   #     end
   #
-  defp renew_session(conn, _user) do
+  defp renew_session_impl(conn, _user) do
     delete_csrf_token()
 
     conn
@@ -215,10 +241,29 @@ defmodule RiverSideWeb.UserAuth do
     {:cont, mount_current_scope(socket, session)}
   end
 
+  def on_mount(:mount_guest_scope, _params, _session, socket) do
+    {:cont, assign(socket, :current_scope, Scope.for_guest())}
+  end
+
+  def on_mount(:mount_customer_scope, params, session, socket) do
+    scope = get_customer_scope(params, session)
+
+    if scope && Scope.active_customer?(scope) do
+      {:cont, assign(socket, :current_scope, scope)}
+    else
+      # Allow checkin page to be accessed without scope
+      if params["_action"] == "new" do
+        {:cont, assign(socket, :current_scope, Scope.for_guest())}
+      else
+        {:halt, redirect_to_checkin(socket)}
+      end
+    end
+  end
+
   def on_mount(:require_authenticated, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
-    if socket.assigns.current_scope && socket.assigns.current_scope.user do
+    if Scope.authenticated?(socket.assigns.current_scope) do
       {:cont, socket}
     else
       socket =
@@ -227,6 +272,37 @@ defmodule RiverSideWeb.UserAuth do
         |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")
 
       {:halt, socket}
+    end
+  end
+
+  def on_mount(:require_admin_scope, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if Scope.admin?(socket.assigns.current_scope) do
+      {:cont, socket}
+    else
+      {:halt, handle_unauthorized(socket, "Admin access required")}
+    end
+  end
+
+  def on_mount(:require_vendor_scope, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+    scope = socket.assigns.current_scope
+
+    if Scope.vendor?(scope) && scope.vendor do
+      {:cont, socket}
+    else
+      {:halt, handle_unauthorized(socket, "Vendor access required")}
+    end
+  end
+
+  def on_mount(:require_cashier_scope, _params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    if Scope.cashier?(socket.assigns.current_scope) do
+      {:cont, socket}
+    else
+      {:halt, handle_unauthorized(socket, "Cashier access required")}
     end
   end
 
@@ -256,25 +332,108 @@ defmodule RiverSideWeb.UserAuth do
     end)
   end
 
-  @doc "Returns the path to redirect to after log in."
-  # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{}}}}) do
-    ~p"/users/settings"
+  # Customer scope management
+  defp get_customer_scope(params, session) do
+    cond do
+      # Check URL params first (for new sessions)
+      params["phone"] && params["table"] ->
+        Scope.for_customer(params["phone"], String.to_integer(params["table"]))
+
+      # Check session for existing customer
+      session["customer_phone"] && session["customer_table"] ->
+        Scope.for_customer(session["customer_phone"], session["customer_table"])
+
+      # No customer info
+      true ->
+        nil
+    end
   end
 
-  def signed_in_path(_), do: ~p"/"
+  defp redirect_to_checkin(socket) do
+    socket
+    |> Phoenix.LiveView.put_flash(:info, "Please check in first")
+    |> Phoenix.LiveView.redirect(to: ~p"/")
+  end
+
+  defp handle_unauthorized(socket, message) do
+    redirect_path =
+      case socket.assigns[:current_scope] do
+        %{role: :vendor} -> ~p"/vendor/dashboard"
+        %{role: :cashier} -> ~p"/cashier/dashboard"
+        %{role: :admin} -> ~p"/admin/dashboard"
+        %{user: nil} -> ~p"/users/log-in"
+        _ -> ~p"/"
+      end
+
+    socket
+    |> Phoenix.LiveView.put_flash(:error, message)
+    |> Phoenix.LiveView.redirect(to: redirect_path)
+  end
+
+  @doc "Returns the path to redirect to after log in."
+  def signed_in_path(conn) do
+    case conn.assigns[:current_scope] do
+      %Scope{role: :admin} -> ~p"/admin/dashboard"
+      %Scope{role: :vendor} -> ~p"/vendor/dashboard"
+      %Scope{role: :cashier} -> ~p"/cashier/dashboard"
+      %Scope{user: %User{}} -> ~p"/users/settings"
+      _ -> ~p"/"
+    end
+  end
 
   @doc """
   Plug for routes that require the user to be authenticated.
   """
   def require_authenticated_user(conn, _opts) do
-    if conn.assigns.current_scope && conn.assigns.current_scope.user do
+    if Scope.authenticated?(conn.assigns[:current_scope]) do
       conn
     else
       conn
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
       |> redirect(to: ~p"/users/log-in")
+      |> halt()
+    end
+  end
+
+  @doc """
+  Plug for routes that require admin access.
+  """
+  def require_admin_user(conn, _opts) do
+    if Scope.admin?(conn.assigns[:current_scope]) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "Admin access required.")
+      |> redirect(to: signed_in_path(conn))
+      |> halt()
+    end
+  end
+
+  @doc """
+  Plug for routes that require vendor access.
+  """
+  def require_vendor_user(conn, _opts) do
+    if Scope.vendor?(conn.assigns[:current_scope]) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "Vendor access required.")
+      |> redirect(to: signed_in_path(conn))
+      |> halt()
+    end
+  end
+
+  @doc """
+  Plug for routes that require cashier access.
+  """
+  def require_cashier_user(conn, _opts) do
+    if Scope.cashier?(conn.assigns[:current_scope]) do
+      conn
+    else
+      conn
+      |> put_flash(:error, "Cashier access required.")
+      |> redirect(to: signed_in_path(conn))
       |> halt()
     end
   end

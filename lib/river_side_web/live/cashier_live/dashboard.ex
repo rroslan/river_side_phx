@@ -545,23 +545,17 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
   @impl true
   def mount(_params, _session, socket) do
-    if socket.assigns.current_scope.user.is_cashier do
-      # Subscribe to order updates
-      Vendors.subscribe_to_all_orders()
+    # Cashier check is already done by the router's on_mount callback
+    # Subscribe to order updates
+    Vendors.subscribe_to_all_orders()
 
-      {:ok,
-       socket
-       |> assign(show_order_modal: false, selected_order: nil)
-       |> assign(show_table_modal: false, selected_table: nil)
-       |> assign(table_orders: [])
-       |> load_orders()
-       |> load_stats()}
-    else
-      {:ok,
-       socket
-       |> put_flash(:error, "You are not authorized to access this page")
-       |> push_navigate(to: ~p"/")}
-    end
+    {:ok,
+     socket
+     |> assign(show_order_modal: false, selected_order: nil)
+     |> assign(show_table_modal: false, selected_table: nil)
+     |> assign(table_orders: [])
+     |> load_orders()
+     |> load_stats()}
   end
 
   @impl true
@@ -613,7 +607,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                 "Order marked as paid and completed"
               )
 
-            {:error, changeset} ->
+            {:error, _changeset} ->
               socket = load_orders(socket)
               update_modals_after_payment(socket, fresh_order)
           end
@@ -944,7 +938,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
         table ->
           case Tables.release_table(table) do
-            {:ok, released_table} ->
+            {:ok, _released_table} ->
               {:noreply,
                socket
                |> put_flash(
@@ -955,7 +949,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                |> assign(:selected_table, nil)
                |> load_orders()}
 
-            {:error, changeset} ->
+            {:error, _changeset} ->
               {:noreply,
                socket
                |> put_flash(:info, success_message)

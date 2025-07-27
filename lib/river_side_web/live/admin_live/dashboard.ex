@@ -794,36 +794,31 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   `{:ok, socket}` with initialized assigns
   """
   def mount(_params, _session, socket) do
-    if socket.assigns.current_scope.user.is_admin do
-      users = Accounts.list_users()
+    # Admin check is already done by the router's on_mount callback
+    # No need to check again here
+    users = Accounts.list_users()
 
-      create_changeset = Accounts.change_user_email(%Accounts.User{}, %{})
-      edit_changeset = Accounts.change_user_email(%Accounts.User{}, %{})
+    create_changeset = Accounts.change_user_email(%Accounts.User{}, %{})
+    edit_changeset = Accounts.change_user_email(%Accounts.User{}, %{})
 
-      # Get table statistics
-      tables = RiverSide.Tables.list_tables()
-      occupied_tables = Enum.count(tables, &(&1.status == "occupied"))
-      total_tables = length(tables)
+    # Get table statistics
+    tables = RiverSide.Tables.list_tables()
+    occupied_tables = Enum.count(tables, &(&1.status == "occupied"))
+    total_tables = length(tables)
 
-      {:ok,
-       socket
-       |> assign(users: users)
-       |> assign(create_form: to_form(create_changeset))
-       |> assign(edit_form: to_form(edit_changeset))
-       |> assign(editing_user: nil)
-       |> assign(show_create_modal: false)
-       |> assign(show_edit_modal: false)
-       |> assign(show_delete_modal: false)
-       |> assign(delete_user: nil)
-       |> assign(delete_impact: nil)
-       |> assign(total_tables: total_tables)
-       |> assign(occupied_tables: occupied_tables)}
-    else
-      {:ok,
-       socket
-       |> put_flash(:error, "You are not authorized to access this page")
-       |> push_navigate(to: ~p"/")}
-    end
+    {:ok,
+     socket
+     |> assign(users: users)
+     |> assign(create_form: to_form(create_changeset))
+     |> assign(edit_form: to_form(edit_changeset))
+     |> assign(editing_user: nil)
+     |> assign(show_create_modal: false)
+     |> assign(show_edit_modal: false)
+     |> assign(show_delete_modal: false)
+     |> assign(delete_user: nil)
+     |> assign(delete_impact: nil)
+     |> assign(total_tables: total_tables)
+     |> assign(occupied_tables: occupied_tables)}
   end
 
   @impl true
