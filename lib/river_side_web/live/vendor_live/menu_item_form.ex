@@ -353,7 +353,8 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
     {:noreply,
      socket
      |> assign(:cropped_image, ~p"/uploads/#{filename}")
-     |> assign(:temp_image_path, ~p"/uploads/#{filename}")}
+     |> assign(:temp_image_path, ~p"/uploads/#{filename}")
+     |> push_event("reset_file_input", %{})}
   end
 
   @impl true
@@ -365,7 +366,8 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
        |> assign(:menu_item, %{socket.assigns.menu_item | image_url: nil})
        |> assign(:cropped_image, nil)
        |> assign(:temp_image_path, nil)
-       |> assign(:remove_image, true)}
+       |> assign(:remove_image, true)
+       |> push_event("reset_file_input", %{})}
     else
       {:noreply, socket}
     end

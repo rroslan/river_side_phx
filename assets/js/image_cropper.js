@@ -44,6 +44,8 @@ export default {
 
     // Set up event listeners
     if (this.imageInput) {
+      // Reset input on mount to ensure clean state
+      this.imageInput.value = "";
       this.imageInput.addEventListener("change", this.handleImageSelectBound);
     } else {
       console.error("Image input element not found");
@@ -52,6 +54,14 @@ export default {
     if (this.cropButton) {
       this.cropButton.addEventListener("click", this.cropImageBound);
     }
+
+    // Listen for file input reset event
+    this.handleEvent("reset_file_input", () => {
+      console.log("Resetting file input");
+      if (this.imageInput) {
+        this.imageInput.value = "";
+      }
+    });
 
     // Listen for aspect ratio changes
     this.handleEvent("change_aspect_ratio", ({ ratio }) => {
@@ -473,6 +483,10 @@ export default {
             width: cropCanvas.width,
             height: cropCanvas.height,
           });
+          // Reset file input after successful crop
+          if (this.imageInput) {
+            this.imageInput.value = "";
+          }
         };
         reader.readAsDataURL(blob);
       },
