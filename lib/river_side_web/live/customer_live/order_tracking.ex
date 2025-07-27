@@ -192,24 +192,6 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
                     </span>
                   </div>
                   
-    <!-- Order Progress -->
-                  <div class="w-full mb-4">
-                    <ul class="steps steps-horizontal w-full">
-                      <li class={"step " <> if(order.status in ["pending", "preparing", "ready", "completed"], do: "step-primary", else: "")}>
-                        <span class="text-xs">Pending</span>
-                      </li>
-                      <li class={"step " <> if(order.status in ["preparing", "ready", "completed"], do: "step-primary", else: "")}>
-                        <span class="text-xs">Preparing</span>
-                      </li>
-                      <li class={"step " <> if(order.status in ["ready", "completed"], do: "step-primary", else: "")}>
-                        <span class="text-xs">Ready</span>
-                      </li>
-                      <li class={"step " <> if(order.status == "completed", do: "step-primary", else: "")}>
-                        <span class="text-xs">Completed</span>
-                      </li>
-                    </ul>
-                  </div>
-                  
     <!-- Order Items -->
                   <div class="space-y-2">
                     <%= for item <- order.order_items do %>
