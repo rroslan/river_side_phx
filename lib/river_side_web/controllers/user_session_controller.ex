@@ -45,20 +45,6 @@ defmodule RiverSideWeb.UserSessionController do
     create(conn, params, "User confirmed successfully.")
   end
 
-  @doc """
-  Creates a new user session for regular login.
-
-  This is the standard login action when users click their magic link.
-
-  ## Parameters
-
-  * `conn` - The connection struct
-  * `params` - Must include user token in `user.token`
-
-  ## Returns
-
-  Delegates to private `create/3` with welcome message.
-  """
   def create(conn, params) do
     create(conn, params, "Welcome back!")
   end

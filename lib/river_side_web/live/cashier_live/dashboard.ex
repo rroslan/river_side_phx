@@ -93,7 +93,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       </div>
-
+      
     <!-- Main Content -->
       <div class="container mx-auto p-6">
         <!-- Flash Messages -->
@@ -150,7 +150,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             </div>
           </div>
         </div>
-
+        
     <!-- Active Orders -->
         <div class="card bg-base-100 shadow-xl mb-8">
           <div class="card-body">
@@ -253,7 +253,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <% end %>
           </div>
         </div>
-
+        
     <!-- Recent Completed Orders -->
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
@@ -294,7 +294,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       </div>
-
+      
     <!-- Order Modal -->
       <%= if @show_order_modal do %>
         <div class="modal modal-open">
@@ -396,7 +396,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       <% end %>
-
+      
     <!-- Table Orders Modal -->
       <%= if @show_table_modal do %>
         <div class="modal modal-open">
@@ -842,17 +842,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
     # Always reload orders to get fresh data
     socket = load_orders(socket) |> load_stats()
-</end_text>
-
-<old_text line=869>
-  defp handle_order_completion(socket, order, success_message) do
-    table_number = order.table_number
-    IO.puts("Handling order completion for table #{table_number}")
-
-    if Vendors.all_orders_completed_for_table?(table_number) do
-      IO.puts("All orders completed for table #{table_number}, attempting to release")
-      # Auto-release the table
-      case Tables.get_table_by_number(String.to_integer(table_number)) do
 
     # Update selected order if it's the one being viewed in modal
     socket =
@@ -881,28 +870,6 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     {:noreply, socket}
   end
 
-  @doc """
-  Loads and organizes all order data for the cashier dashboard.
-
-  This is the central data loading function that prepares all order information
-  for display. It handles both active orders and completed orders, organizing
-  them for efficient display and processing.
-
-  ## Data Loading Strategy
-  - Active orders: All pending, preparing, and ready orders
-  - Completed orders: Recent completed/cancelled orders + any anomalies (paid but not completed)
-  - Orders are grouped by table for the main view
-
-  ## Returns
-  Socket with assigns:
-  - `:active_orders` - List of active orders
-  - `:orders_by_table` - Map of table_number => {orders, total, stats}
-  - `:completed_orders` - Recent completed orders for history view
-
-  ## Performance Note
-  This function is called frequently due to real-time updates,
-  so it's optimized to load only necessary data.
-  """
   defp load_orders(socket) do
     # Get active orders, sorted by insertion time (oldest first)
     active_orders =

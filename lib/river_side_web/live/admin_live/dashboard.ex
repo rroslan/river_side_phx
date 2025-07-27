@@ -827,34 +827,18 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Opens the create user modal dialog.
-
-  Initializes a fresh changeset for the new user form.
-  """
   def handle_event("open_create_modal", _params, socket) do
     {:noreply, assign(socket, show_create_modal: true)}
   end
 
-  @doc """
-  Closes the create user modal and resets the form.
-  """
   def handle_event("close_create_modal", _params, socket) do
     {:noreply, assign(socket, show_create_modal: false)}
   end
 
-  @doc """
-  Closes the edit user modal and clears the editing state.
-  """
   def handle_event("close_edit_modal", _params, socket) do
     {:noreply, assign(socket, show_edit_modal: false, editing_user: nil)}
   end
 
-  @doc """
-  Validates the create user form in real-time.
-
-  Updates the changeset to show validation errors as the user types.
-  """
   def handle_event("validate_create", %{"user" => user_params}, socket) do
     changeset =
       %Accounts.User{}
@@ -865,27 +849,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Creates a new user account.
-
-  Handles the creation of different user types:
-  * Regular customers
-  * Vendors (with associated vendor record)
-  * Cashiers
-  * Administrators
-
-  For vendor users, automatically creates the vendor profile and
-  sends a magic login link via email.
-
-  ## Parameters
-
-  * `user_params` - Map containing user attributes including role flags
-
-  ## Returns
-
-  * Success: Updates user list and shows success message
-  * Failure: Shows error message with validation details
-  """
   def handle_event("create_user", %{"user" => user_params}, socket) do
     # Debug: log the incoming params
     require Logger
@@ -1017,15 +980,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Opens the edit modal for a specific user.
-
-  Loads the user data and prepares the edit form with current values.
-
-  ## Parameters
-
-  * `id` - User ID to edit
-  """
   def handle_event("edit_user", %{"id" => id}, socket) do
     user = Accounts.get_user!(id)
 
@@ -1044,11 +998,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Validates the edit user form in real-time.
-
-  Shows validation errors as the admin modifies user data.
-  """
   def handle_event("validate_edit", %{"user" => user_params}, socket) do
     changeset =
       socket.assigns.editing_user
@@ -1059,20 +1008,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Updates an existing user's information.
-
-  Handles role changes and updates the user list on success.
-
-  ## Parameters
-
-  * `user_params` - Updated user attributes
-  * `user_id` - ID of user to update
-
-  ## Security
-
-  Prevents admins from removing their own admin privileges.
-  """
   def handle_event("update_user", %{"user" => user_params, "user_id" => user_id}, socket) do
     user = Accounts.get_user!(user_id)
 
@@ -1103,16 +1038,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
   end
 
   @impl true
-  @doc """
-  Shows the delete confirmation modal for a user.
-
-  Loads user details and checks for associated data that will be deleted.
-  Prevents self-deletion for safety.
-
-  ## Parameters
-
-  * `id` - User ID to potentially delete
-  """
   def handle_event("request_delete_user", %{"id" => id}, socket) do
     user = Accounts.get_user!(id)
 
@@ -1134,9 +1059,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
      |> assign(delete_impact: delete_impact)}
   end
 
-  @doc """
-  Cancels the delete operation and closes the confirmation modal.
-  """
   def handle_event("cancel_delete", _params, socket) do
     {:noreply,
      socket
@@ -1145,28 +1067,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
      |> assign(delete_impact: nil)}
   end
 
-  @doc """
-  Confirms and executes user deletion.
-
-  Performs cascade deletion based on user type:
-  * **Vendors**: Deletes vendor profile, menu items, orders, and order items
-  * **Regular users**: Deletes user account and sessions
-  * **All users**: Cleans up authentication tokens
-
-  ## Parameters
-
-  * `id` - User ID to delete
-
-  ## Side Effects
-
-  * Logs deletion action
-  * Updates user statistics
-  * Refreshes user list
-
-  ## Error Handling
-
-  Shows appropriate error messages if deletion fails.
-  """
   def handle_event("confirm_delete", %{"id" => id}, socket) do
     user = Accounts.get_user!(id)
 
@@ -1225,17 +1125,6 @@ defmodule RiverSideWeb.AdminLive.Dashboard do
     end)
   end
 
-  @doc """
-  Resets all tables in the food court to available status.
-
-  Emergency operation that:
-  * Sets all tables to "available" status
-  * Clears customer information
-  * Empties shopping carts
-  * Resets occupation timestamps
-
-  Used for system reset or emergency situations.
-  """
   def handle_event("reset_all_tables", _params, socket) do
     # Reset all tables using the Tables context
     RiverSide.Tables.reset_all_tables()
