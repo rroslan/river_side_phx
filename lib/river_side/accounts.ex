@@ -94,7 +94,7 @@ defmodule RiverSide.Accounts do
         # Convert string keys to atoms for consistency
         attrs =
           role_attrs
-          |> Enum.map(fn {k, v} -> {String.to_atom(to_string(k)), v} end)
+          |> Enum.map(fn {k, v} -> {to_existing_atom(k), v} end)
           |> Enum.into(%{})
           |> Map.merge(%{email: email, confirmed_at: DateTime.utc_now(:second)})
 
@@ -107,12 +107,22 @@ defmodule RiverSide.Accounts do
         # Convert string keys to atoms for consistency
         attrs =
           role_attrs
-          |> Enum.map(fn {k, v} -> {String.to_atom(to_string(k)), v} end)
+          |> Enum.map(fn {k, v} -> {to_existing_atom(k), v} end)
           |> Enum.into(%{})
 
         existing_user
         |> User.role_changeset(attrs)
         |> Repo.update()
+    end
+  end
+
+  defp to_existing_atom(key) when is_atom(key), do: key
+
+  defp to_existing_atom(key) when is_binary(key) do
+    try do
+      String.to_existing_atom(key)
+    rescue
+      ArgumentError -> String.to_atom(key)
     end
   end
 

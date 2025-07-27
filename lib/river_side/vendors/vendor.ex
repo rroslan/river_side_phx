@@ -1,4 +1,11 @@
 defmodule RiverSide.Vendors.Vendor do
+  @moduledoc """
+  Vendor schema representing food stalls in the River Side food court.
+
+  Each vendor has their own menu items, orders, and can be managed by a user
+  with the vendor role. Tracks vendor details like name, description, logo,
+  and active status.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 

@@ -1,4 +1,10 @@
 defmodule RiverSide.Vendors.Order do
+  @moduledoc """
+  Order schema for managing customer orders in the food court system.
+
+  Tracks order lifecycle from pending through completion, including payment status
+  and relationships to vendors, customers, and order items.
+  """
   use Ecto.Schema
   import Ecto.Changeset
   alias RiverSideWeb.Helpers.TimezoneHelper

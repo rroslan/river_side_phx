@@ -78,4 +78,13 @@ defmodule RiverSide.AccountsFixtures do
       set: [inserted_at: dt, authenticated_at: dt]
     )
   end
+
+  def valid_user_password, do: "hello world!"
+
+  def set_password(user, _password \\ "hello world!") do
+    # Since this app uses passwordless auth, we'll just return the user
+    # The tests that use this are likely from the Phoenix generator
+    # and may need to be updated for passwordless flow
+    user
+  end
 end

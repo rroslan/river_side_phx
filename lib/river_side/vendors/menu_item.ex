@@ -1,4 +1,10 @@
 defmodule RiverSide.Vendors.MenuItem do
+  @moduledoc """
+  Menu item schema for vendor offerings in the food court.
+
+  Represents individual food or beverage items that vendors can offer,
+  including pricing, availability, categorization, and images.
+  """
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -23,7 +29,7 @@ defmodule RiverSide.Vendors.MenuItem do
     |> validate_required([:name, :price, :category, :vendor_id])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:description, max: 500)
-    |> validate_number(:price, greater_than: 0, less_than: 10000)
+    |> validate_number(:price, greater_than_or_equal_to: 0, less_than: 10_000)
     |> validate_inclusion(:category, ["food", "drinks"])
     |> foreign_key_constraint(:vendor_id)
   end
@@ -37,7 +43,7 @@ defmodule RiverSide.Vendors.MenuItem do
     |> validate_required([:name, :price, :category, :vendor_id])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:description, max: 500)
-    |> validate_number(:price, greater_than: 0, less_than: 10000)
+    |> validate_number(:price, greater_than_or_equal_to: 0, less_than: 10_000)
     |> validate_inclusion(:category, ["food", "drinks"])
     |> foreign_key_constraint(:vendor_id)
   end
@@ -51,7 +57,7 @@ defmodule RiverSide.Vendors.MenuItem do
     |> validate_required([:name, :price, :category])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:description, max: 500)
-    |> validate_number(:price, greater_than: 0, less_than: 10000)
+    |> validate_number(:price, greater_than_or_equal_to: 0, less_than: 10_000)
     |> validate_inclusion(:category, ["food", "drinks"])
   end
 
