@@ -39,7 +39,10 @@ defmodule RiverSideWeb.Layouts do
       <!-- Navigation -->
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
-          <h1 class="text-2xl font-bold text-base-content px-4">River Side Food Court</h1>
+          <a href="/" class="flex items-center gap-3 px-4">
+            <img src={~p"/images/riverside-logo.svg"} alt="River Side Food Court" class="h-10 w-10" />
+            <h1 class="text-2xl font-bold text-base-content">River Side Food Court</h1>
+          </a>
         </div>
         <div class="flex-none gap-2">
           <%= if @current_scope && @current_scope.user do %>

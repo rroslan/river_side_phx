@@ -4,7 +4,21 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="RiverSide" suffix=" · Phoenix Framework">
+    <meta
+      name="description"
+      content="River Side Food Court - Order delicious food from multiple vendors in one convenient location"
+    />
+    <meta
+      name="keywords"
+      content="food court, restaurant, online ordering, river side, food delivery"
+    />
+    <meta name="author" content="River Side Food Court" />
+    
+<!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+
+    <.live_title default="River Side Food Court">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />

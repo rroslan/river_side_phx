@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#1F2937"/>
+
+  <!-- River Wave (simplified) -->
+  <path d="M0 20 Q8 16 16 20 T32 20" stroke="#3B82F6" stroke-width="2" fill="none"/>
+
+  <!-- Utensils (simplified and centered) -->
+  <g transform="translate(16, 12)">
+    <!-- Fork -->
+    <rect x="-5" y="0" width="1.5" height="8" fill="#F59E0B"/>
+    <rect x="-5" y="-3" width="0.5" height="3" fill="#F59E0B"/>
+    <rect x="-4.5" y="-3" width="0.5" height="3" fill="#F59E0B"/>
+    <rect x="-4" y="-3" width="0.5" height="3" fill="#F59E0B"/>
+
+    <!-- Spoon -->
+    <rect x="3.5" y="0" width="1.5" height="8" fill="#F59E0B"/>
+    <ellipse cx="4.25" cy="-2" rx="2" ry="3" fill="#F59E0B"/>
+
+    <!-- Knife -->
+    <rect x="-0.75" y="0" width="1.5" height="8" fill="#F59E0B"/>
+    <path d="M-0.75 -3 L-0.75 0 L1.5 0 Q1.5 -1.5 1.5 -3 Z" fill="#F59E0B"/>
+  </g>
+
+  <!-- R letter (for River Side) -->
+  <text x="16" y="26" font-family="Arial, sans-serif" font-size="8" font-weight="bold" text-anchor="middle" fill="#10B981">R</text>
+</svg>
