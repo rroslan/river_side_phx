@@ -33,7 +33,7 @@ defmodule RiverSide.Vendors.MenuItem do
   """
   def create_changeset(menu_item, attrs) do
     menu_item
-    |> cast(attrs, [:name, :description, :price, :category, :vendor_id])
+    |> cast(attrs, [:name, :description, :price, :category, :image_url, :vendor_id])
     |> validate_required([:name, :price, :category, :vendor_id])
     |> validate_length(:name, min: 2, max: 100)
     |> validate_length(:description, max: 500)

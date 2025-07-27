@@ -7,7 +7,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-base-200">
+    <div class="min-h-screen bg-base-200" id="menu-item-form" phx-hook="ImageCropper">
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
           <h1 class="text-2xl font-bold text-base-content px-4">
@@ -105,7 +105,7 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                 </label>
                 
     <!-- Current Image -->
-                <%= if @menu_item.image_url do %>
+                <%= if @menu_item.image_url && @live_action == :edit do %>
                   <div class="mb-4">
                     <p class="text-sm text-base-content/70 mb-2">Current image:</p>
                     <img
@@ -116,13 +116,69 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                   </div>
                 <% end %>
                 
+    <!-- Image Cropper Container -->
+                <div data-cropper-container class="mb-4">
+                  <input
+                    type="file"
+                    data-image-input
+                    accept="image/*"
+                    class="hidden"
+                    id="image-file-input"
+                  />
+                  <canvas data-crop-canvas class="w-full border-2 border-base-300 rounded-lg hidden">
+                  </canvas>
+                  
+    <!-- Crop Controls -->
+                  <div data-crop-controls class="hidden mt-4 space-y-4">
+                    <div class="flex gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        class="btn btn-sm"
+                        phx-click="change_aspect_ratio"
+                        phx-value-ratio="1"
+                      >
+                        Square (1:1)
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm"
+                        phx-click="change_aspect_ratio"
+                        phx-value-ratio="1.5"
+                      >
+                        Wide (3:2)
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm"
+                        phx-click="change_aspect_ratio"
+                        phx-value-ratio="0.75"
+                      >
+                        Tall (3:4)
+                      </button>
+                    </div>
+                    <button type="button" data-crop-button class="btn btn-primary btn-sm">
+                      Crop & Use Image
+                    </button>
+                  </div>
+                  
+    <!-- Cropped Preview -->
+                  <div :if={@cropped_image} class="mt-4">
+                    <p class="text-sm text-base-content/70 mb-2">Preview:</p>
+                    <img
+                      src={@cropped_image}
+                      alt="Cropped preview"
+                      class="w-32 h-32 object-cover rounded-lg"
+                    />
+                  </div>
+                </div>
+                
     <!-- Upload Section -->
                 <div class="space-y-4">
                   <div
                     class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                    phx-drop-target={@uploads.image.ref}
+                    onclick="document.getElementById('image-file-input').click()"
                   >
-                    <label for={@uploads.image.ref} class="cursor-pointer">
+                    <label for="image-file-input" class="cursor-pointer">
                       <svg
                         class="mx-auto h-12 w-12 text-base-content/50"
                         stroke="currentColor"
@@ -138,71 +194,14 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                         />
                       </svg>
                       <p class="mt-2 text-sm">
-                        <span class="font-medium text-primary">Click to upload</span> or drag and drop
+                        <span class="font-medium text-primary">Click to upload</span>
                       </p>
                       <p class="text-xs text-base-content/50">PNG, JPG, GIF up to 10MB</p>
-                      <.live_file_input upload={@uploads.image} class="hidden" />
+                      <p class="text-xs text-warning mt-2">
+                        Images will be cropped to fit menu display
+                      </p>
                     </label>
                   </div>
-                  
-    <!-- Upload Preview -->
-                  <%= for entry <- @uploads.image.entries do %>
-                    <div class="border rounded-lg p-4 flex items-center gap-4">
-                      <div class="relative">
-                        <.live_img_preview entry={entry} class="w-20 h-20 object-cover rounded" />
-                        <%= if entry.progress > 0 and entry.progress < 100 do %>
-                          <div class="absolute inset-0 bg-black/50 rounded flex items-center justify-center">
-                            <span class="text-white text-sm font-bold">{entry.progress}%</span>
-                          </div>
-                        <% end %>
-                      </div>
-                      <div class="flex-1">
-                        <p class="font-medium">{entry.client_name}</p>
-                        <p class="text-sm text-base-content/70">
-                          {Float.round(entry.client_size / 1_000_000, 2)} MB
-                        </p>
-                        <!-- Upload errors -->
-                        <%= for err <- upload_errors(@uploads.image, entry) do %>
-                          <p class="text-error text-sm mt-1">{humanize_error(err)}</p>
-                        <% end %>
-                      </div>
-                      <button
-                        type="button"
-                        phx-click="cancel-upload"
-                        phx-value-ref={entry.ref}
-                        class="btn btn-ghost btn-sm btn-circle"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  <% end %>
-                  
-    <!-- General upload errors -->
-                  <%= for err <- upload_errors(@uploads.image) do %>
-                    <div class="alert alert-error">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="stroke-current shrink-0 h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{humanize_error(err)}</span>
-                    </div>
-                  <% end %>
                 </div>
               </div>
 
@@ -261,11 +260,8 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
     socket
     |> assign(:menu_item, %MenuItem{})
     |> assign(:form, to_form(changeset))
-    |> allow_upload(:image,
-      accept: ~w(.jpg .jpeg .png .gif),
-      max_entries: 1,
-      max_file_size: 10_000_000
-    )
+    |> assign(:cropped_image, nil)
+    |> assign(:temp_image_path, nil)
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -277,11 +273,8 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
       socket
       |> assign(:menu_item, menu_item)
       |> assign(:form, to_form(changeset))
-      |> allow_upload(:image,
-        accept: ~w(.jpg .jpeg .png .gif),
-        max_entries: 1,
-        max_file_size: 10_000_000
-      )
+      |> assign(:cropped_image, nil)
+      |> assign(:temp_image_path, nil)
     else
       socket
       |> put_flash(:error, "You are not authorized to edit this item")
@@ -305,18 +298,49 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
   end
 
   @impl true
-  def handle_event("save", %{"menu_item" => menu_item_params}, socket) do
-    uploaded_files =
-      consume_uploaded_entries(socket, :image, fn %{path: path}, entry ->
-        dest = Path.join([:code.priv_dir(:river_side), "static", "uploads", entry.client_name])
-        File.cp!(path, dest)
-        {:ok, ~p"/uploads/#{entry.client_name}"}
-      end)
+  def handle_event("change_aspect_ratio", %{"ratio" => ratio}, socket) do
+    {:noreply, push_event(socket, "change_aspect_ratio", %{ratio: String.to_float(ratio)})}
+  end
 
+  @impl true
+  def handle_event("image_loaded", %{"width" => _width, "height" => _height}, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event(
+        "image_cropped",
+        %{"data" => data_url, "width" => width, "height" => height},
+        socket
+      ) do
+    # Extract base64 data
+    "data:image/" <> rest = data_url
+    [_type, base64_data] = String.split(rest, ";base64,", parts: 2)
+
+    # Generate filename
+    timestamp = System.system_time(:second)
+    filename = "menu_item_#{timestamp}_#{width}x#{height}.jpg"
+
+    # Save to uploads directory
+    uploads_dir = Path.join([:code.priv_dir(:river_side), "static", "uploads"])
+    File.mkdir_p!(uploads_dir)
+
+    dest_path = Path.join(uploads_dir, filename)
+    File.write!(dest_path, Base.decode64!(base64_data))
+
+    {:noreply,
+     socket
+     |> assign(:cropped_image, ~p"/uploads/#{filename}")
+     |> assign(:temp_image_path, ~p"/uploads/#{filename}")}
+  end
+
+  @impl true
+  def handle_event("save", %{"menu_item" => menu_item_params}, socket) do
     menu_item_params =
-      case uploaded_files do
-        [image_url | _] -> Map.put(menu_item_params, "image_url", image_url)
-        [] -> menu_item_params
+      if socket.assigns.temp_image_path do
+        Map.put(menu_item_params, "image_url", socket.assigns.temp_image_path)
+      else
+        menu_item_params
       end
 
     menu_item_params = Map.put(menu_item_params, "vendor_id", socket.assigns.vendor.id)
@@ -348,9 +372,4 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
         {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
-
-  defp humanize_error(:too_large), do: "File is too large (max 10MB)"
-  defp humanize_error(:too_many_files), do: "You can only upload one image"
-  defp humanize_error(:not_accepted), do: "Invalid file type. Please upload JPG, PNG, or GIF"
-  defp humanize_error(error), do: to_string(error)
 end

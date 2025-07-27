@@ -24,12 +24,14 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import { hooks as colocatedHooks } from "phoenix-colocated/river_side";
 import topbar from "../vendor/topbar";
+import ImageCropper from "./image_cropper";
 
 const csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 const Hooks = {
   ...colocatedHooks,
+  ImageCropper: ImageCropper,
 };
 
 // Handle modal events

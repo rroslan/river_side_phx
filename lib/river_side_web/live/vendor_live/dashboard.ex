@@ -355,10 +355,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                             <img
                               src={item.image_url}
                               alt={item.name}
-                              class="rounded-xl h-32 w-full object-cover"
+                              class="rounded-xl h-48 w-full object-cover"
                             />
                           <% else %>
-                            <div class="rounded-xl h-32 w-full bg-base-300 flex items-center justify-center">
+                            <div class="rounded-xl h-48 w-full bg-base-300 flex items-center justify-center">
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
@@ -416,10 +416,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                             <img
                               src={item.image_url}
                               alt={item.name}
-                              class="rounded-xl h-32 w-full object-cover"
+                              class="rounded-xl h-48 w-full object-cover"
                             />
                           <% else %>
-                            <div class="rounded-xl h-32 w-full bg-base-300 flex items-center justify-center">
+                            <div class="rounded-xl h-48 w-full bg-base-300 flex items-center justify-center">
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 fill="none"
