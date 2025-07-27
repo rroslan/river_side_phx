@@ -271,21 +271,21 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     <!-- Tabs -->
           <div class="tabs tabs-boxed mb-6">
             <a
-              class={"tab #{if @active_tab == "orders", do: "tab-active"}"}
+              class={"tab #{if @active_tab == "orders", do: "tab-active", else: ""}"}
               phx-click="set_tab"
               phx-value-tab="orders"
             >
               Active Orders
             </a>
             <a
-              class={"tab #{if @active_tab == "menu", do: "tab-active"}"}
+              class={"tab #{if @active_tab == "menu", do: "tab-active", else: ""}"}
               phx-click="set_tab"
               phx-value-tab="menu"
             >
               Menu Items
             </a>
             <a
-              class={"tab #{if @active_tab == "analytics", do: "tab-active"}"}
+              class={"tab #{if @active_tab == "analytics", do: "tab-active", else: ""}"}
               phx-click="set_tab"
               phx-value-tab="analytics"
             >
@@ -294,6 +294,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
           </div>
           
     <!-- Content based on active tab -->
+          <!-- Debug: Active tab = {@active_tab} -->
           <%= case @active_tab do %>
             <% "orders" -> %>
               <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -575,6 +576,83 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                   </div>
                 </div>
               </div>
+            <% _ -> %>
+              <!-- Default to orders tab if active_tab has unexpected value -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                <%= for order <- @active_orders do %>
+                  <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                      <div class="flex justify-between items-start">
+                        <h2 class="card-title">Table {order.table_number}</h2>
+                        <div class={OrderStatusHelper.status_badge_class(order.status)}>
+                          {OrderStatusHelper.status_text(order.status)}
+                        </div>
+                      </div>
+                      <p class="text-sm opacity-70">Order #{order.order_number}</p>
+                      <div class="divider my-2"></div>
+                      <div class="space-y-2">
+                        <%= for item <- order.order_items do %>
+                          <div class="flex justify-between items-center">
+                            <div>
+                              <span class="font-semibold">{item.quantity}x</span>
+                              <span>{item.menu_item.name}</span>
+                            </div>
+                            <span class="text-sm">RM {format_currency(item.subtotal)}</span>
+                          </div>
+                          <%= if item.notes do %>
+                            <p class="text-sm opacity-70 ml-6">Note: {item.notes}</p>
+                          <% end %>
+                        <% end %>
+                      </div>
+                      <div class="divider my-2"></div>
+                      <div class="flex justify-between items-center font-bold">
+                        <span>Total</span>
+                        <span>RM {format_currency(order.total_amount)}</span>
+                      </div>
+                      <div class="card-actions justify-end mt-4">
+                        <%= case order.status do %>
+                          <% "pending" -> %>
+                            <button
+                              class="btn btn-primary btn-sm"
+                              phx-click="update_order_status"
+                              phx-value-id={order.id}
+                              phx-value-status="preparing"
+                            >
+                              Start Preparing
+                            </button>
+                          <% "preparing" -> %>
+                            <button
+                              class="btn btn-success btn-sm"
+                              phx-click="update_order_status"
+                              phx-value-id={order.id}
+                              phx-value-status="ready"
+                            >
+                              Ready for Pickup
+                            </button>
+                          <% "ready" -> %>
+                            <span class="text-sm text-success">
+                              {OrderStatusHelper.status_text(order.status)}
+                            </span>
+                        <% end %>
+                        <button
+                          class="btn btn-error btn-sm btn-outline"
+                          phx-click="update_order_status"
+                          phx-value-id={order.id}
+                          phx-value-status="cancelled"
+                          data-confirm="Are you sure you want to cancel this order?"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <%= if Enum.empty?(@active_orders) do %>
+                <div class="text-center py-12">
+                  <p class="text-lg opacity-70">No active orders at the moment</p>
+                </div>
+              <% end %>
           <% end %>
         </div>
       <% else %>
@@ -627,7 +705,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
          |> assign(active_orders: active_orders)
          |> assign(completed_orders: completed_orders)
          |> assign(sales_stats: sales_stats)
-         |> assign(active_tab: "orders")}
+         |> assign(active_tab: "orders")
+         |> tap(fn socket ->
+           IO.puts("VendorDashboard mounted with active_tab: #{socket.assigns.active_tab}")
+         end)}
       else
         # Create a default vendor profile
         case Vendors.create_vendor(%{
@@ -677,6 +758,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
   @impl true
   def handle_event("set_tab", %{"tab" => tab}, socket) do
+    IO.puts("Setting active tab to: #{tab}")
     {:noreply, assign(socket, active_tab: tab)}
   end
 
