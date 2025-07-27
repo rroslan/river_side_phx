@@ -35,9 +35,13 @@ defmodule RiverSideWeb.UserAuth do
   def log_in_user(conn, user, params \\ %{}) do
     user_return_to = get_session(conn, :user_return_to)
 
+    # Create scope for the user to determine redirect path
+    scope = Scope.for_user(user)
+
     conn
     |> create_or_extend_session(user, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> assign(:current_scope, scope)
+    |> redirect(to: user_return_to || signed_in_path_for_scope(scope))
   end
 
   @doc """
@@ -87,7 +91,7 @@ defmodule RiverSideWeb.UserAuth do
       |> assign(:current_scope, Scope.for_user(user))
       |> maybe_reissue_user_session_token(user, token_inserted_at)
     else
-      nil -> assign(conn, :current_scope, Scope.for_guest())
+      nil -> assign(conn, :current_scope, nil)
     end
   end
 
@@ -242,18 +246,18 @@ defmodule RiverSideWeb.UserAuth do
   end
 
   def on_mount(:mount_guest_scope, _params, _session, socket) do
-    {:cont, assign(socket, :current_scope, Scope.for_guest())}
+    {:cont, Phoenix.Component.assign(socket, :current_scope, nil)}
   end
 
   def on_mount(:mount_customer_scope, params, session, socket) do
     scope = get_customer_scope(params, session)
 
     if scope && Scope.active_customer?(scope) do
-      {:cont, assign(socket, :current_scope, scope)}
+      {:cont, Phoenix.Component.assign(socket, :current_scope, scope)}
     else
       # Allow checkin page to be accessed without scope
       if params["_action"] == "new" do
-        {:cont, assign(socket, :current_scope, Scope.for_guest())}
+        {:cont, Phoenix.Component.assign(socket, :current_scope, nil)}
       else
         {:halt, redirect_to_checkin(socket)}
       end
@@ -380,6 +384,13 @@ defmodule RiverSideWeb.UserAuth do
       _ -> ~p"/"
     end
   end
+
+  # Helper function to get signed in path directly from scope
+  defp signed_in_path_for_scope(%Scope{role: :admin}), do: ~p"/admin/dashboard"
+  defp signed_in_path_for_scope(%Scope{role: :vendor}), do: ~p"/vendor/dashboard"
+  defp signed_in_path_for_scope(%Scope{role: :cashier}), do: ~p"/cashier/dashboard"
+  defp signed_in_path_for_scope(%Scope{user: %User{}}), do: ~p"/users/settings"
+  defp signed_in_path_for_scope(_), do: ~p"/"
 
   @doc """
   Plug for routes that require the user to be authenticated.

@@ -367,14 +367,6 @@ defmodule RiverSideWeb.CustomerLive.Menu do
      |> assign(cart_total: total)}
   end
 
-  defp recalculate_all_cart_totals(socket) do
-    {count, total} = calculate_all_cart_totals(socket.assigns.cart_items)
-
-    socket
-    |> assign(cart_count: count)
-    |> assign(cart_total: total)
-  end
-
   # Calculate totals for ALL items in cart, across all vendors
   defp calculate_all_cart_totals(cart_items) do
     Enum.reduce(cart_items, {0, Decimal.new("0")}, fn {item_id, qty}, {count, total} ->

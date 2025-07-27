@@ -100,8 +100,14 @@ defmodule RiverSideWeb.UserSessionController do
   * Clears remember me cookie if present
   """
   def delete(conn, _params) do
-    conn
-    |> put_flash(:info, "Logged out successfully.")
-    |> UserAuth.log_out_user()
+    if conn.assigns[:current_scope] && conn.assigns.current_scope do
+      conn
+      |> put_flash(:info, "Logged out successfully.")
+      |> UserAuth.log_out_user()
+    else
+      conn
+      |> put_flash(:error, "You are not logged in.")
+      |> redirect(to: ~p"/")
+    end
   end
 end

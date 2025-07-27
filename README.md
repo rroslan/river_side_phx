@@ -6,8 +6,10 @@ A comprehensive food court management system built with Phoenix LiveView, featur
 
 ### 🔐 Authentication & Authorization
 - Passwordless authentication using magic links
-- Three user roles: Admin, Vendor, and Cashier
-- Role-based access control for different dashboards
+- Comprehensive scope-based authorization system
+- Five user types: Admin, Vendor, Cashier, Customer, and Guest
+- Role-based access control with granular permissions
+- Context-aware authorization with preloaded data
 
 ### 👤 User Roles
 
@@ -36,6 +38,39 @@ A comprehensive food court management system built with Phoenix LiveView, featur
 - **Order Processing**: Real-time order status updates
 - **Image Uploads**: Support for vendor logos and menu item images
 - **Responsive Design**: DaisyUI dark theme with mobile optimization
+- **Customer Check-in**: Table-based customer sessions without authentication
+
+## Scope-Based Authorization
+
+The application implements a comprehensive scope system that provides:
+
+### Key Features
+- **Centralized Permission Management**: Each role has predefined permissions
+- **Context-Aware Authorization**: Vendor data automatically loaded for vendor users
+- **Resource-Based Access Control**: Fine-grained control over who can access what
+- **Session Management**: Support for both authenticated users and customer sessions
+
+### Scope Structure
+```elixir
+%Scope{
+  user: %User{},           # Authenticated user (nil for guests/customers)
+  role: :admin,            # :admin, :vendor, :cashier, :customer, :guest
+  vendor: %Vendor{},       # Preloaded for vendor users
+  permissions: %{},        # Role-specific permissions
+  customer_info: %{},      # Customer session data
+  session_id: "...",       # Unique session identifier
+  expires_at: ~U[...]      # Session expiration (for customers)
+}
+```
+
+### Permission Examples
+- **Admin**: Full system access, vendor management, user management
+- **Vendor**: Own menu/order management, sales analytics
+- **Cashier**: Payment processing, order viewing
+- **Customer**: Menu viewing, order placement, order tracking
+- **Guest**: Public menu viewing only
+
+For detailed implementation guide, see [docs/SCOPE_IMPLEMENTATION_GUIDE.md](docs/SCOPE_IMPLEMENTATION_GUIDE.md)
 
 ## Tech Stack
 
@@ -187,14 +222,21 @@ river_side/
 ├── lib/
 │   ├── river_side/           # Business logic
 │   │   ├── accounts/         # User authentication
+│   │   │   └── scope.ex      # Scope-based authorization
+│   │   ├── authorization.ex  # Resource-based policies
 │   │   └── vendors/          # Vendor & order management
 │   └── river_side_web/       # Web interface
 │       ├── components/       # Reusable UI components
 │       ├── controllers/      # HTTP controllers
+│       ├── user_auth.ex      # Authentication & scope management
 │       └── live/            # LiveView modules
 │           ├── admin_live/   # Admin dashboard
 │           ├── vendor_live/  # Vendor dashboard
-│           └── cashier_live/ # Cashier dashboard
+│           ├── cashier_live/ # Cashier dashboard
+│           └── customer_live/# Customer interface
+├── docs/                    # Documentation
+│   ├── SCOPE_IMPLEMENTATION_GUIDE.md
+│   └── SCOPE_CHANGES_QUICK_REFERENCE.md
 ├── priv/
 │   ├── repo/                # Database migrations
 │   └── static/              # Static assets

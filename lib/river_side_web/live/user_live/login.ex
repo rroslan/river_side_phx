@@ -11,7 +11,7 @@ defmodule RiverSideWeb.UserLive.Login do
           <.header>
             <p>Log in</p>
             <:subtitle>
-              <%= if @current_scope do %>
+              <%= if @current_scope && @current_scope.user do %>
                 You need to reauthenticate to perform sensitive actions on your account.
               <% else %>
                 Please log in with your email address to continue.
@@ -38,7 +38,6 @@ defmodule RiverSideWeb.UserLive.Login do
           phx-submit="submit_magic"
         >
           <.input
-            readonly={!!@current_scope}
             field={f[:email]}
             type="email"
             label="Email"
@@ -56,13 +55,26 @@ defmodule RiverSideWeb.UserLive.Login do
   end
 
   def mount(_params, _session, socket) do
-    email =
-      Phoenix.Flash.get(socket.assigns.flash, :email) ||
-        get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
+    # If user is already logged in, redirect to their dashboard
+    case socket.assigns[:current_scope] do
+      %{user: %{is_admin: true}} ->
+        {:ok, push_navigate(socket, to: ~p"/admin/dashboard")}
 
-    form = to_form(%{"email" => email}, as: "user")
+      %{user: %{is_vendor: true}} ->
+        {:ok, push_navigate(socket, to: ~p"/vendor/dashboard")}
 
-    {:ok, assign(socket, form: form, trigger_submit: false)}
+      %{user: %{is_cashier: true}} ->
+        {:ok, push_navigate(socket, to: ~p"/cashier/dashboard")}
+
+      %{user: %{}} ->
+        {:ok, push_navigate(socket, to: ~p"/users/settings")}
+
+      _ ->
+        # No user logged in, show login form
+        email = Phoenix.Flash.get(socket.assigns.flash, :email)
+        form = to_form(%{"email" => email}, as: "user")
+        {:ok, assign(socket, form: form, trigger_submit: false)}
+    end
   end
 
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
