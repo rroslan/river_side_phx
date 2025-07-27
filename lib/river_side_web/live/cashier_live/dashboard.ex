@@ -102,228 +102,74 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
         <div class="card bg-base-100 shadow-xl mb-8">
           <div class="card-body">
             <div class="flex justify-between items-center mb-4">
-              <h2 class="card-title text-2xl">Active Orders</h2>
-              <button phx-click="toggle_view" class="btn btn-sm btn-ghost">
-                <%= if @table_view do %>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="w-5 h-5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
-                    />
-                  </svg>
-                  Order View
-                <% else %>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="1.5"
-                    stroke="currentColor"
-                    class="w-5 h-5"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 0c0-.621.504-1.125 1.125-1.125m0 0h7.5"
-                    />
-                  </svg>
-                  Table View
-                <% end %>
-              </button>
+              <h2 class="card-title text-2xl">Active Orders by Table</h2>
+              <div class="text-sm text-base-content/60">
+                <span class="font-semibold">{map_size(@orders_by_table)}</span> tables with orders
+              </div>
             </div>
             <%= if Enum.empty?(@active_orders) do %>
               <div class="text-center py-8">
                 <p class="text-base-content/60">No active orders at the moment</p>
               </div>
             <% else %>
-              <%= if @table_view do %>
-                <!-- Table View -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <%= for {table_number, table_data} <- @orders_by_table do %>
-                    <div class="card bg-base-200 shadow-xl">
-                      <div class="card-body">
-                        <div class="flex justify-between items-start">
-                          <h3 class="card-title">Table #{table_number}</h3>
-                          <%= if table_data.all_paid do %>
-                            <span class="badge badge-success">All Paid</span>
-                          <% else %>
-                            <% paid_count = Enum.count(table_data.orders, & &1.paid) %>
-                            <span class="badge badge-warning">
-                              {paid_count}/{table_data.order_count} Paid
-                            </span>
-                          <% end %>
-                        </div>
+              <!-- Table View -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <%= for {table_number, table_data} <- @orders_by_table do %>
+                  <div class="card bg-base-200 shadow-xl">
+                    <div class="card-body">
+                      <div class="flex justify-between items-start">
+                        <h3 class="card-title">Table #{table_number}</h3>
+                        <%= if table_data.all_paid do %>
+                          <span class="badge badge-success">All Paid</span>
+                        <% else %>
+                          <% paid_count = Enum.count(table_data.orders, & &1.paid) %>
+                          <span class="badge badge-warning">
+                            {paid_count}/{table_data.order_count} Paid
+                          </span>
+                        <% end %>
+                      </div>
 
-                        <div class="mt-2 space-y-2">
-                          <%= for order <- table_data.orders do %>
-                            <div class="p-2 bg-base-100 rounded">
-                              <div class="flex justify-between items-center">
-                                <div>
-                                  <p class="font-semibold text-sm">{order.vendor.name}</p>
-                                  <p class="text-xs text-base-content/60">#{order.order_number}</p>
-                                </div>
-                                <div class="text-right">
-                                  <span class={"badge badge-sm #{status_badge_class(order.status)}"}>
-                                    {String.capitalize(order.status)}
-                                  </span>
-                                  <p class="text-sm font-semibold mt-1">
-                                    RM {format_currency(order.total_amount)}
-                                  </p>
-                                </div>
+                      <div class="mt-2 space-y-2">
+                        <%= for order <- table_data.orders do %>
+                          <div class="p-2 bg-base-100 rounded">
+                            <div class="flex justify-between items-center">
+                              <div>
+                                <p class="font-semibold text-sm">{order.vendor.name}</p>
+                                <p class="text-xs text-base-content/60">#{order.order_number}</p>
+                              </div>
+                              <div class="text-right">
+                                <span class={"badge badge-sm #{status_badge_class(order.status)}"}>
+                                  {String.capitalize(order.status)}
+                                </span>
+                                <p class="text-sm font-semibold mt-1">
+                                  RM {format_currency(order.total_amount)}
+                                </p>
                               </div>
                             </div>
-                          <% end %>
-                        </div>
-
-                        <div class="divider my-2"></div>
-
-                        <div class="flex justify-between items-center font-bold">
-                          <span>Total</span>
-                          <span class="text-lg">RM {format_currency(table_data.total_amount)}</span>
-                        </div>
-
-                        <div class="card-actions justify-end mt-4">
-                          <button
-                            phx-click="view_table_orders"
-                            phx-value-table={table_number}
-                            class="btn btn-primary btn-sm"
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% else %>
-                <!-- Order View -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <%= for order <- @active_orders do %>
-                    <div class="card bg-base-200 shadow">
-                      <div class="card-body">
-                        <div class="flex justify-between items-start">
-                          <h3 class="font-bold">Order #{order.order_number}</h3>
-                          <span class={status_badge_class(order.status)}>
-                            {String.capitalize(order.status)}
-                          </span>
-                        </div>
-                        <p class="text-sm text-base-content/70">{order.vendor.name}</p>
-                        <p class="text-sm text-base-content/70">
-                          Table #{order.table_number}
-                          <%= if length(Vendors.list_orders_for_table(order.table_number) |> Enum.filter(&(&1.status not in ["completed", "cancelled"]))) > 1 do %>
-                            <span class="badge badge-xs badge-info ml-1">Multiple Orders</span>
-                          <% end %>
-                        </p>
-                        <p class="text-lg font-semibold">RM {format_currency(order.total_amount)}</p>
-                        <%= if order.paid do %>
-                          <div class="badge badge-success badge-sm">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke-width="1.5"
-                              stroke="currentColor"
-                              class="w-3 h-3 mr-1"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                            Paid
                           </div>
                         <% end %>
-                        <div class="text-sm text-base-content/60">
-                          {TimezoneHelper.format_malaysian_time_only(order.inserted_at)}
-                        </div>
-                        <div class="card-actions justify-end mt-2">
-                          <%= if length(Vendors.list_orders_for_table(order.table_number) |> Enum.filter(&(&1.status not in ["completed", "cancelled"]))) > 1 do %>
-                            <button
-                              phx-click="view_table_orders"
-                              phx-value-table={order.table_number}
-                              class="btn btn-sm btn-secondary"
-                            >
-                              View Table
-                            </button>
-                          <% end %>
-                          <button
-                            phx-click="view_order"
-                            phx-value-id={order.id}
-                            class="btn btn-sm btn-primary"
-                          >
-                            View Details
-                          </button>
-                          <%= if order.status == "ready" && order.paid != true do %>
-                            <button
-                              phx-click="mark_as_paid"
-                              phx-value-id={order.id}
-                              class="btn btn-sm btn-warning"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="w-4 h-4"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"
-                                />
-                              </svg>
-                              Mark as Paid
-                            </button>
-                          <% end %>
-                          <%= if order.status == "ready" && order.paid == true do %>
-                            <% other_active_orders =
-                              Vendors.list_orders_for_table(order.table_number)
-                              |> Enum.filter(
-                                &(&1.status not in ["completed", "cancelled"] && &1.id != order.id)
-                              ) %>
-                            <button
-                              phx-click="complete_and_release"
-                              phx-value-id={order.id}
-                              phx-value-table={order.table_number}
-                              class="btn btn-sm btn-success"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="w-4 h-4"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                              <%= if length(other_active_orders) > 0 do %>
-                                Complete Order
-                              <% else %>
-                                Complete & Release Table
-                              <% end %>
-                            </button>
-                          <% end %>
-                        </div>
+                      </div>
+
+                      <div class="divider my-2"></div>
+
+                      <div class="flex justify-between items-center font-bold">
+                        <span>Total</span>
+                        <span class="text-lg">RM {format_currency(table_data.total_amount)}</span>
+                      </div>
+
+                      <div class="card-actions justify-end mt-4">
+                        <button
+                          phx-click="view_table_orders"
+                          phx-value-table={table_number}
+                          class="btn btn-primary btn-sm"
+                        >
+                          View Details
+                        </button>
                       </div>
                     </div>
-                  <% end %>
-                </div>
-              <% end %>
+                  </div>
+                <% end %>
+              </div>
             <% end %>
           </div>
         </div>
@@ -602,12 +448,12 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     if socket.assigns.current_scope.user.is_cashier do
       # Subscribe to order updates
       Vendors.subscribe_to_all_orders()
+      IO.puts("Cashier dashboard mounted - subscribed to order updates")
 
       {:ok,
        socket
        |> assign(show_order_modal: false, selected_order: nil)
        |> assign(show_table_modal: false, selected_table: nil)
-       |> assign(table_view: true)
        |> load_orders()
        |> load_stats()}
     else
@@ -656,15 +502,16 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   end
 
   @impl true
-  def handle_event("toggle_view", _params, socket) do
-    {:noreply, assign(socket, table_view: !socket.assigns.table_view)}
-  end
-
   def handle_event("view_table_orders", %{"table" => table_number}, socket) do
+    table_orders =
+      socket.assigns.active_orders
+      |> Enum.filter(&(&1.table_number == table_number))
+
     {:noreply,
      socket
      |> assign(:show_table_modal, true)
-     |> assign(:selected_table, table_number)}
+     |> assign(:selected_table, table_number)
+     |> assign(:table_orders, table_orders)}
   end
 
   def handle_event("close_table_modal", _params, socket) do
@@ -803,8 +650,40 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   end
 
   @impl true
-  def handle_info({:order_updated, _order}, socket) do
-    {:noreply, socket |> load_orders()}
+  def handle_info({:order_updated, updated_order}, socket) do
+    # Log the update for debugging
+    IO.puts(
+      "Cashier received order update: Order ##{updated_order.order_number}, Status: #{updated_order.status}, Table: #{updated_order.table_number}"
+    )
+
+    # Always reload orders to get fresh data
+    socket = load_orders(socket) |> load_stats()
+
+    # Update selected order if it's the one being viewed in modal
+    socket =
+      if socket.assigns[:selected_order] && socket.assigns.selected_order.id == updated_order.id do
+        # Get fresh order data with all associations
+        fresh_order = Vendors.get_order!(updated_order.id)
+        assign(socket, :selected_order, fresh_order)
+      else
+        socket
+      end
+
+    # Update table modal if viewing the table that contains this order
+    socket =
+      if socket.assigns[:selected_table] && socket.assigns[:show_table_modal] do
+        # Get fresh table orders
+        table_orders =
+          socket.assigns.active_orders
+          |> Enum.filter(&(&1.table_number == socket.assigns.selected_table))
+          |> Enum.sort_by(& &1.inserted_at, :asc)
+
+        assign(socket, :table_orders, table_orders)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   defp load_orders(socket) do
@@ -820,6 +699,10 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
 
     # Group active orders by table
     orders_by_table = group_orders_by_table(active_orders)
+
+    IO.puts(
+      "Loaded #{length(active_orders)} active orders across #{map_size(orders_by_table)} tables"
+    )
 
     assign(socket,
       active_orders: active_orders,
