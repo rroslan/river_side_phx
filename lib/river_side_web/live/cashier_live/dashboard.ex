@@ -104,7 +104,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <div class="flex justify-between items-center mb-4">
               <h2 class="card-title text-2xl">Active Orders by Table</h2>
               <div class="text-sm text-base-content/60">
-                <span class="font-semibold">{map_size(@orders_by_table)}</span> tables with orders
+                <span class="font-semibold">{length(@orders_by_table)}</span> tables with orders
               </div>
             </div>
             <%= if Enum.empty?(@active_orders) do %>
@@ -701,7 +701,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
     orders_by_table = group_orders_by_table(active_orders)
 
     IO.puts(
-      "Loaded #{length(active_orders)} active orders across #{map_size(orders_by_table)} tables"
+      "Loaded #{length(active_orders)} active orders across #{length(orders_by_table)} tables"
     )
 
     assign(socket,
@@ -714,7 +714,7 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   defp group_orders_by_table(orders) do
     orders
     |> Enum.group_by(& &1.table_number)
-    |> Map.new(fn {table_number, table_orders} ->
+    |> Enum.map(fn {table_number, table_orders} ->
       total_amount =
         Enum.reduce(table_orders, Decimal.new("0"), fn order, acc ->
           Decimal.add(acc, order.total_amount)
