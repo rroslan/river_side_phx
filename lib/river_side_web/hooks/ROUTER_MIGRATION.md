@@ -1,14 +1,14 @@
 # Router Migration Guide - Using RequireRole Hook
 
-This guide shows how the router.ex file was updated to use the new RequireRole hook while maintaining compatibility with the existing UserAuth system.
+This guide shows how the router.ex file was updated to use the new RequireRole hook for cleaner, more concise authorization.
 
 ## Key Principles
 
-1. **Keep UserAuth for scope mounting** - UserAuth hooks like `mount_current_scope` and `mount_customer_scope` are still needed to properly load the user's scope into the socket assigns.
+1. **Single hook for both mounting and authorization** - The RequireRole hook now handles both mounting the current scope and checking authorization in one step.
 
-2. **Add RequireRole for authorization** - The RequireRole hook performs the actual authorization check after the scope is mounted.
+2. **Automatic scope detection** - The hook automatically mounts the appropriate scope (user or customer) based on session data.
 
-3. **Order matters** - Always mount the scope first, then check authorization.
+3. **Simplified syntax** - No need to chain multiple hooks; RequireRole does it all.
 
 ## Migration Examples
 
@@ -26,10 +26,7 @@ end
 **After:**
 ```elixir
 live_session :admin,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, :admin}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, :admin}] do
   live "/dashboard", AdminLive.Dashboard, :index
   live "/vendors", AdminLive.VendorList, :index
 end
@@ -51,10 +48,7 @@ end
 **After:**
 ```elixir
 live_session :vendor,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, :vendor}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, :vendor}] do
   live "/dashboard", VendorLive.Dashboard, :index
   live "/profile/edit", VendorLive.ProfileEdit, :edit
   live "/menu/new", VendorLive.MenuItemForm, :new
@@ -75,10 +69,7 @@ end
 **After:**
 ```elixir
 live_session :cashier,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, :cashier}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, :cashier}] do
   live "/dashboard", CashierLive.Dashboard, :index
 end
 ```
@@ -98,10 +89,7 @@ end
 **After:**
 ```elixir
 live_session :customer,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_customer_scope},
-    {RiverSideWeb.Hooks.RequireRole, :customer}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, :customer}] do
   live "/menu", CustomerLive.Menu, :index
   live "/cart", CustomerLive.Cart, :index
   live "/orders", CustomerLive.OrderTracking, :index
@@ -122,10 +110,7 @@ end
 **After:**
 ```elixir
 live_session :authenticated_user,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, :authenticated}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, :authenticated}] do
   live "/users/settings", UserLive.Settings, :edit
   live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
 end
@@ -133,10 +118,11 @@ end
 
 ## Benefits of This Approach
 
-1. **Separation of concerns** - Scope mounting and authorization are separate steps
-2. **Flexibility** - Easy to add additional hooks between mounting and authorization
+1. **Cleaner code** - Single hook instead of multiple for common use cases
+2. **Less boilerplate** - No need to remember to mount scope before checking roles
 3. **Backwards compatible** - The original UserAuth hooks still work if needed
-4. **Clearer intent** - It's obvious what each hook is doing
+4. **Smart scope detection** - Automatically handles user vs customer sessions
+5. **Consistent API** - Same hook pattern for all role types
 
 ## Advanced Usage
 
@@ -144,10 +130,7 @@ end
 
 ```elixir
 live_session :staff_area,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, {:any, [:admin, :cashier]}}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, {:any, [:admin, :cashier]}}] do
   live "/staff/reports", StaffLive.Reports, :index
 end
 ```
@@ -156,10 +139,7 @@ end
 
 ```elixir
 live_session :financial,
-  on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
-    {RiverSideWeb.Hooks.RequireRole, {:permission, :process_payments}}
-  ] do
+  on_mount: [{RiverSideWeb.Hooks.RequireRole, {:permission, :process_payments}}] do
   live "/payments/process", PaymentLive.Process, :new
 end
 ```
@@ -169,7 +149,6 @@ end
 ```elixir
 live_session :admin_with_logging,
   on_mount: [
-    {RiverSideWeb.UserAuth, :mount_current_scope},
     {RiverSideWeb.Hooks.RequireRole, :admin},
     {RiverSideWeb.Hooks.ActivityLogger, :log_access},
     {RiverSideWeb.Hooks.AdminLayout, :set_layout}
@@ -181,6 +160,14 @@ end
 ## Notes
 
 - Routes that don't require authentication (like the home page and login) don't need RequireRole
-- The customer checkin route uses `mount_guest_scope` since customers aren't authenticated yet
-- The order of hooks matters - always mount scope before checking authorization
+- The customer checkin route still uses `mount_guest_scope` since customers aren't authenticated yet
+- RequireRole automatically handles scope mounting, so you don't need separate mount hooks
 - The pipe_through [:browser, :require_authenticated_user] is still used for initial Plug-level authentication
+- The browser pipeline already includes `fetch_current_scope_for_user` which loads the scope into conn.assigns
+
+## How It Works
+
+1. **Browser Pipeline** - The `fetch_current_scope_for_user` plug in the browser pipeline loads the current scope from the session token
+2. **Plug Authentication** - The `require_authenticated_user` plug verifies basic authentication at the Plug level
+3. **LiveView Mount** - RequireRole hook ensures the scope is available in the socket and checks the specific role requirement
+4. **Smart Detection** - For customer routes, it checks both URL params and session data to find customer info

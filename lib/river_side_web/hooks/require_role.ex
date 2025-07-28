@@ -15,12 +15,15 @@ defmodule RiverSideWeb.Hooks.RequireRole do
   """
 
   import Phoenix.LiveView
+  alias RiverSide.Accounts
   alias RiverSide.Accounts.Scope
 
   # Requires admin role to access the LiveView.
   # Redirects to appropriate dashboard with error message if the user
   # doesn't have admin access.
-  def on_mount(:admin, _params, _session, socket) do
+  def on_mount(:admin, _params, session, socket) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{role: :admin} ->
         {:cont, socket}
@@ -35,7 +38,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
 
   # Requires vendor role to access the LiveView.
   # Also ensures the vendor has an associated vendor record.
-  def on_mount(:vendor, _params, _session, socket) do
+  def on_mount(:vendor, _params, session, socket) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{role: :vendor, vendor: vendor} when not is_nil(vendor) ->
         {:cont, socket}
@@ -55,7 +60,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
   end
 
   # Requires cashier role to access the LiveView.
-  def on_mount(:cashier, _params, _session, socket) do
+  def on_mount(:cashier, _params, session, socket) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{role: :cashier} ->
         {:cont, socket}
@@ -70,7 +77,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
 
   # Requires customer role to access the LiveView.
   # Also checks if the customer session is still active.
-  def on_mount(:customer, _params, _session, socket) do
+  def on_mount(:customer, params, session, socket) do
+    socket = ensure_customer_scope(socket, params, session)
+
     case socket.assigns[:current_scope] do
       %Scope{role: :customer} = scope ->
         if Scope.active_customer?(scope) do
@@ -98,7 +107,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
 
   # Requires any authenticated user (admin, vendor, or cashier).
   # Does not allow customer-only sessions.
-  def on_mount(:authenticated, _params, _session, socket) do
+  def on_mount(:authenticated, _params, session, socket) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{user: user} when not is_nil(user) ->
         {:cont, socket}
@@ -110,7 +121,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
 
   # Requires specific permission to access the LiveView.
   # Example: on_mount: [{RiverSideWeb.Hooks.RequireRole, {:permission, :manage_vendors}}]
-  def on_mount({:permission, permission}, _params, _session, socket) when is_atom(permission) do
+  def on_mount({:permission, permission}, _params, session, socket) when is_atom(permission) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{} = scope ->
         if Scope.can?(scope, permission) do
@@ -127,7 +140,9 @@ defmodule RiverSideWeb.Hooks.RequireRole do
 
   # Allows access based on multiple roles.
   # Example: on_mount: [{RiverSideWeb.Hooks.RequireRole, {:any, [:admin, :vendor]}}]
-  def on_mount({:any, roles}, _params, _session, socket) when is_list(roles) do
+  def on_mount({:any, roles}, _params, session, socket) when is_list(roles) do
+    socket = ensure_current_scope(socket, session)
+
     case socket.assigns[:current_scope] do
       %Scope{role: role} = scope ->
         if role in roles do
@@ -151,6 +166,42 @@ defmodule RiverSideWeb.Hooks.RequireRole do
   end
 
   # Private helpers
+
+  # Ensures current_scope is assigned to socket from session
+  defp ensure_current_scope(socket, session) do
+    Phoenix.Component.assign_new(socket, :current_scope, fn ->
+      {user, _} =
+        if user_token = session["user_token"] do
+          Accounts.get_user_by_session_token(user_token)
+        end || {nil, nil}
+
+      Scope.for_user(user)
+    end)
+  end
+
+  # Ensures customer scope is assigned from params or session
+  defp ensure_customer_scope(socket, params, session) do
+    Phoenix.Component.assign_new(socket, :current_scope, fn ->
+      cond do
+        # Check URL params first (for new sessions)
+        params["phone"] && params["table"] ->
+          Scope.for_customer(params["phone"], String.to_integer(params["table"]))
+
+        # Check session for existing customer
+        session["customer_phone"] && session["customer_table"] ->
+          Scope.for_customer(session["customer_phone"], session["customer_table"])
+
+        # Try regular user session
+        user_token = session["user_token"] ->
+          {user, _} = Accounts.get_user_by_session_token(user_token) || {nil, nil}
+          Scope.for_user(user)
+
+        # No scope info
+        true ->
+          nil
+      end
+    end)
+  end
 
   defp handle_unauthorized(socket, scope, message) do
     redirect_path = get_redirect_path(scope)

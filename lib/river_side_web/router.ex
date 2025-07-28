@@ -43,10 +43,7 @@ defmodule RiverSideWeb.Router do
 
     # Other customer routes require active customer session
     live_session :customer,
-      on_mount: [
-        {RiverSideWeb.UserAuth, :mount_customer_scope},
-        {RiverSideWeb.Hooks.RequireRole, :customer}
-      ] do
+      on_mount: [{RiverSideWeb.Hooks.RequireRole, :customer}] do
       live "/menu", CustomerLive.Menu, :index
       live "/cart", CustomerLive.Cart, :index
       live "/orders", CustomerLive.OrderTracking, :index
@@ -82,10 +79,7 @@ defmodule RiverSideWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :authenticated_user,
-      on_mount: [
-        {RiverSideWeb.UserAuth, :mount_current_scope},
-        {RiverSideWeb.Hooks.RequireRole, :authenticated}
-      ] do
+      on_mount: [{RiverSideWeb.Hooks.RequireRole, :authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
@@ -96,10 +90,7 @@ defmodule RiverSideWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :admin,
-      on_mount: [
-        {RiverSideWeb.UserAuth, :mount_current_scope},
-        {RiverSideWeb.Hooks.RequireRole, :admin}
-      ] do
+      on_mount: [{RiverSideWeb.Hooks.RequireRole, :admin}] do
       live "/dashboard", AdminLive.Dashboard, :index
       live "/vendors", AdminLive.VendorList, :index
     end
@@ -110,10 +101,7 @@ defmodule RiverSideWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :vendor,
-      on_mount: [
-        {RiverSideWeb.UserAuth, :mount_current_scope},
-        {RiverSideWeb.Hooks.RequireRole, :vendor}
-      ] do
+      on_mount: [{RiverSideWeb.Hooks.RequireRole, :vendor}] do
       live "/dashboard", VendorLive.Dashboard, :index
       live "/profile/edit", VendorLive.ProfileEdit, :edit
       live "/menu/new", VendorLive.MenuItemForm, :new
@@ -126,10 +114,7 @@ defmodule RiverSideWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :cashier,
-      on_mount: [
-        {RiverSideWeb.UserAuth, :mount_current_scope},
-        {RiverSideWeb.Hooks.RequireRole, :cashier}
-      ] do
+      on_mount: [{RiverSideWeb.Hooks.RequireRole, :cashier}] do
       live "/dashboard", CashierLive.Dashboard, :index
     end
   end
