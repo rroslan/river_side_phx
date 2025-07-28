@@ -25,6 +25,11 @@
    - API key from Resend.com for sending emails
    - Required for magic link authentication
    - If not set, falls back to local adapter (emails won't be sent)
+   - **IMPORTANT**: You must verify your sending domain in Resend dashboard
+   - The app is configured to send from `noreply@applikasi.tech`
+   - To use a different domain:
+     1. Verify the domain in Resend dashboard
+     2. Update `from` email in `lib/river_side/accounts/user_notifier.ex`
 
 ### Optional Variables
 
@@ -161,7 +166,21 @@ docker run -e DATABASE_URL=... -e SECRET_KEY_BASE=... -e PHX_HOST=... -p 4000:40
 
 ## Post-deployment Tasks
 
-### 1. Create Admin User
+### 1. Configure Email Sending
+
+Before creating users, ensure email configuration is complete:
+
+1. **Verify Domain in Resend**:
+   - Log into your Resend dashboard
+   - Add and verify your domain (currently configured for `applikasi.tech`)
+   - If using a different domain, update `from` in `user_notifier.ex`
+
+2. **Set RESEND_API_KEY**:
+   ```bash
+   export RESEND_API_KEY=re_xxxxxxxxxxxxx
+   ```
+
+### 2. Create Admin User
 
 ```elixir
 # Run in production console
@@ -172,14 +191,14 @@ user = RiverSide.Accounts.create_user!(%{
 RiverSide.Accounts.deliver_user_magic_link_instructions(user, "https://yourapp.com")
 ```
 
-### 2. Configure Vendors
+### 3. Configure Vendors
 
 1. Log in as admin
 2. Navigate to Admin Dashboard
 3. Create vendor accounts
 4. Vendors can then log in and set up their profiles
 
-### 3. Monitor Application
+### 4. Monitor Application
 
 - Check logs for errors
 - Monitor database connections
@@ -213,7 +232,8 @@ RiverSide.Accounts.deliver_user_magic_link_instructions(user, "https://yourapp.c
 4. **"Emails not sending"**
    - Verify RESEND_API_KEY is set
    - Check Resend dashboard for errors
-   - Ensure sender domain is verified
+   - Ensure sender domain is verified (must match `from` email in user_notifier.ex)
+   - Current configuration uses `noreply@applikasi.tech`
 
 5. **"File uploads failing"**
    - Check UPLOADS_DIR permissions

@@ -9,7 +9,7 @@ defmodule RiverSide.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"RiverSide", "contact@example.com"})
+      |> from({"River Side Food Court", "noreply@applikasi.tech"})
       |> subject(subject)
       |> text_body(body)
 
@@ -22,19 +22,20 @@ defmodule RiverSide.Accounts.UserNotifier do
   Deliver instructions to update a user email.
   """
   def deliver_update_email_instructions(user, url) do
-    deliver(user.email, "Update email instructions", """
-
-    ==============================
-
+    deliver(user.email, "Update your email - River Side Food Court", """
     Hi #{user.email},
 
-    You can change your email by visiting the URL below:
+    You requested to change your email address for your River Side Food Court account.
 
+    Please click the link below to confirm your new email:
     #{url}
 
-    If you didn't request this change, please ignore this.
+    This link will expire in 24 hours.
 
-    ==============================
+    If you didn't request this change, please ignore this email or contact our support team.
+
+    Best regards,
+    River Side Food Court Team
     """)
   end
 
@@ -49,36 +50,44 @@ defmodule RiverSide.Accounts.UserNotifier do
   end
 
   defp deliver_magic_link_instructions(user, url) do
-    deliver(user.email, "Log in instructions", """
-
-    ==============================
-
+    deliver(user.email, "Your login link - River Side Food Court", """
     Hi #{user.email},
 
-    You can log into your account by visiting the URL below:
+    Welcome back to River Side Food Court!
 
+    Click the secure link below to log into your account:
     #{url}
 
-    If you didn't request this email, please ignore this.
+    This magic link will expire in 10 minutes for your security.
 
-    ==============================
+    If you didn't request this login link, you can safely ignore this email.
+
+    Enjoy your meal!
+    River Side Food Court Team
     """)
   end
 
   defp deliver_confirmation_instructions(user, url) do
-    deliver(user.email, "Confirmation instructions", """
-
-    ==============================
-
+    deliver(user.email, "Welcome to River Side Food Court - Please confirm your email", """
     Hi #{user.email},
 
-    You can confirm your account by visiting the URL below:
+    Welcome to River Side Food Court! We're excited to have you join us.
 
+    Please confirm your email address by clicking the link below:
     #{url}
 
-    If you didn't create an account with us, please ignore this.
+    Once confirmed, you'll be able to:
+    • Browse menus from all our vendors
+    • Place orders for pickup
+    • Track your order status in real-time
+    • Save your favorite items
 
-    ==============================
+    This link will expire in 24 hours.
+
+    If you didn't create an account with us, please ignore this email.
+
+    See you soon!
+    River Side Food Court Team
     """)
   end
 end
