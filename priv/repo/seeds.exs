@@ -40,7 +40,7 @@ IO.puts("Created admin user: #{admin.email}")
 vendor_data = [
   %{
     user: %{
-      email: System.get_env("VENDOR_EMAIL", "vendor1@example.com"),
+      email: System.get_env("VENDOR1_EMAIL", "vendor1@example.com"),
       name: "Mama's Kitchen Owner",
       is_admin: false,
       is_vendor: true,
@@ -93,7 +93,7 @@ vendor_data = [
   },
   %{
     user: %{
-      email: "vendor2@example.com",
+      email: System.get_env("VENDOR2_EMAIL", "vendor2@example.com"),
       name: "Western Delights Owner",
       is_admin: false,
       is_vendor: true,
@@ -145,7 +145,7 @@ vendor_data = [
   },
   %{
     user: %{
-      email: "vendor3@example.com",
+      email: System.get_env("VENDOR3_EMAIL", "vendor3@example.com"),
       name: "Japanese Express Owner",
       is_admin: false,
       is_vendor: true,
@@ -250,6 +250,73 @@ IO.puts("✅ Initialized #{count} tables")
 IO.puts("\n✅ Seed data created successfully!")
 IO.puts("\nYou can now log in with:")
 IO.puts("- Admin: #{System.get_env("ADMIN_EMAIL", "admin@example.com")}")
-IO.puts("- Vendor: #{System.get_env("VENDOR_EMAIL", "vendor1@example.com")}")
+IO.puts("- Vendor 1 (Mama's Kitchen): #{System.get_env("VENDOR1_EMAIL", "vendor1@example.com")}")
+
+IO.puts(
+  "- Vendor 2 (Western Delights): #{System.get_env("VENDOR2_EMAIL", "vendor2@example.com")}"
+)
+
+IO.puts(
+  "- Vendor 3 (Japanese Express): #{System.get_env("VENDOR3_EMAIL", "vendor3@example.com")}"
+)
+
 IO.puts("- Cashier: #{System.get_env("CASHIER_EMAIL", "cashier1@example.com")}")
 IO.puts("\nCheck your email for the magic login links!")
+
+# Update existing users who might not have role fields set
+IO.puts("\n\nUpdating existing users with role fields...")
+
+existing_users = Repo.all(User)
+
+for user <- existing_users do
+  cond do
+    user.email == System.get_env("ADMIN_EMAIL", "admin@example.com") ->
+      user
+      |> Ecto.Changeset.change(%{is_admin: true, is_vendor: false, is_cashier: false})
+      |> Repo.update!()
+
+      IO.puts("Updated #{user.email} as admin")
+
+    user.email in [
+      System.get_env("VENDOR1_EMAIL", "vendor1@example.com"),
+      System.get_env("VENDOR2_EMAIL", "vendor2@example.com"),
+      System.get_env("VENDOR3_EMAIL", "vendor3@example.com"),
+      "vendor1@example.com",
+      "vendor2@example.com",
+      "vendor3@example.com"
+    ] ->
+      user
+      |> Ecto.Changeset.change(%{is_admin: false, is_vendor: true, is_cashier: false})
+      |> Repo.update!()
+
+      IO.puts("Updated #{user.email} as vendor")
+
+    user.email in [
+      System.get_env("CASHIER_EMAIL", "cashier1@example.com"),
+      "cashier1@example.com",
+      "cashier2@example.com",
+      "cashier3@example.com"
+    ] ->
+      user
+      |> Ecto.Changeset.change(%{is_admin: false, is_vendor: false, is_cashier: true})
+      |> Repo.update!()
+
+      IO.puts("Updated #{user.email} as cashier")
+
+    true ->
+      # For any other existing users, ensure role fields are set to false
+      if is_nil(user.is_admin) || is_nil(user.is_vendor) || is_nil(user.is_cashier) do
+        user
+        |> Ecto.Changeset.change(%{
+          is_admin: user.is_admin || false,
+          is_vendor: user.is_vendor || false,
+          is_cashier: user.is_cashier || false
+        })
+        |> Repo.update!()
+
+        IO.puts("Updated #{user.email} with default role fields")
+      end
+  end
+end
+
+IO.puts("\n✅ All users updated with role fields!")
