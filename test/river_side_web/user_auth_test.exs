@@ -25,7 +25,7 @@ defmodule RiverSideWeb.UserAuthTest do
       conn = UserAuth.log_in_user(conn, user)
       assert token = get_session(conn, :user_token)
       assert get_session(conn, :live_socket_id) == "users_sessions:#{Base.url_encode64(token)}"
-      assert redirected_to(conn) == ~p"/"
+      assert redirected_to(conn) == ~p"/users/settings"
       assert Accounts.get_user_by_session_token(token)
     end
 
@@ -232,7 +232,7 @@ defmodule RiverSideWeb.UserAuthTest do
       {:cont, updated_socket} =
         UserAuth.on_mount(:mount_current_scope, %{}, session, %LiveView.Socket{})
 
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope.role == :guest
     end
 
     test "assigns nil to current_scope assign if there isn't a user_token", %{conn: conn} do
@@ -241,7 +241,7 @@ defmodule RiverSideWeb.UserAuthTest do
       {:cont, updated_socket} =
         UserAuth.on_mount(:mount_current_scope, %{}, session, %LiveView.Socket{})
 
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope.role == :guest
     end
   end
 
@@ -266,7 +266,7 @@ defmodule RiverSideWeb.UserAuthTest do
       }
 
       {:halt, updated_socket} = UserAuth.on_mount(:require_authenticated, %{}, session, socket)
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope.role == :guest
     end
 
     test "redirects to login page if there isn't a user_token", %{conn: conn} do
@@ -278,7 +278,7 @@ defmodule RiverSideWeb.UserAuthTest do
       }
 
       {:halt, updated_socket} = UserAuth.on_mount(:require_authenticated, %{}, session, socket)
-      assert updated_socket.assigns.current_scope == nil
+      assert updated_socket.assigns.current_scope.role == :guest
     end
   end
 
