@@ -176,31 +176,100 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
             </div>
           <% end %>
           
-    <!-- Vendor Setup Notice -->
-          <%= if !@vendor.logo_url || @vendor.name == "New Vendor" do %>
-            <div class="alert alert-warning shadow-lg mb-6">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="stroke-current flex-shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <div>
-                <h3 class="font-bold">Complete Your Vendor Profile</h3>
-                <div class="text-xs">
-                  Please update your vendor name and upload a logo to get started.
+    <!-- Vendor Profile Card -->
+          <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <%= if @vendor.logo_url do %>
+                    <img
+                      src={@vendor.logo_url}
+                      alt={@vendor.name}
+                      class="w-20 h-20 rounded-lg object-cover"
+                    />
+                  <% else %>
+                    <div class="w-20 h-20 rounded-lg bg-base-300 flex items-center justify-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-10 h-10 text-base-content/50"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+                        />
+                      </svg>
+                    </div>
+                  <% end %>
+                  <div>
+                    <h2 class="text-2xl font-bold">{@vendor.name}</h2>
+                    <%= if @vendor.description do %>
+                      <p class="text-base-content/70">{@vendor.description}</p>
+                    <% else %>
+                      <p class="text-base-content/50">No description added</p>
+                    <% end %>
+                    <div class="mt-1">
+                      <span class={
+                        if @vendor.is_active, do: "badge badge-success", else: "badge badge-error"
+                      }>
+                        {if @vendor.is_active, do: "Active", else: "Inactive"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                <button class="btn btn-primary" phx-click="edit_profile">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="1.5"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l9.93-9.93Z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19.5 7.125M18 13.875v4.5a1.875 1.875 0 0 1-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V8.625a1.875 1.875 0 0 1 1.875-1.875h4.5"
+                    />
+                  </svg>
+                  Edit Profile
+                </button>
               </div>
-              <button class="btn btn-sm" phx-click="edit_profile">Update Profile</button>
+
+              <%= if !@vendor.logo_url || @vendor.name == "New Vendor" do %>
+                <div class="alert alert-warning mt-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current flex-shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <div>
+                    <h3 class="font-bold">Complete Your Profile</h3>
+                    <div class="text-xs">
+                      Please update your vendor name and upload a logo to get started.
+                    </div>
+                  </div>
+                </div>
+              <% end %>
             </div>
-          <% end %>
+          </div>
           
     <!-- Sales Stats -->
           <div class="stats shadow bg-base-100 w-full mb-6">

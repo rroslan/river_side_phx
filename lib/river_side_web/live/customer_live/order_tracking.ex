@@ -109,9 +109,35 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
               <div>
                 <h3 class="text-sm font-bold mb-2">Your Orders By Vendor:</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <%= for {vendor_name, vendor_orders} <- Enum.group_by(all_orders, & &1.vendor.name) do %>
+                  <%= for {vendor, vendor_orders} <- Enum.group_by(all_orders, & &1.vendor) do %>
                     <div class="bg-base-200 rounded-lg p-3">
-                      <div class="font-semibold">{vendor_name}</div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <%= if vendor.logo_url do %>
+                          <img
+                            src={vendor.logo_url}
+                            alt={vendor.name}
+                            class="w-8 h-8 rounded object-cover"
+                          />
+                        <% else %>
+                          <div class="w-8 h-8 rounded bg-base-300 flex items-center justify-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke-width="1.5"
+                              stroke="currentColor"
+                              class="w-4 h-4 text-base-content/50"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"
+                              />
+                            </svg>
+                          </div>
+                        <% end %>
+                        <div class="font-semibold">{vendor.name}</div>
+                      </div>
                       <div class="text-sm text-base-content/70">
                         {length(vendor_orders)} order(s) •
                         RM {vendor_orders
@@ -167,24 +193,50 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body">
                   <div class="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 class="text-lg font-bold">{order.vendor.name}</h4>
-                      <p class="text-sm text-base-content/70">Order #{order.order_number}</p>
-                      <% food_items =
-                        Enum.filter(order.order_items, &(&1.menu_item.category == "food")) %>
-                      <% drink_items =
-                        Enum.filter(order.order_items, &(&1.menu_item.category == "drinks")) %>
-                      <div class="flex gap-2 mt-1">
-                        <%= if length(food_items) > 0 do %>
-                          <span class="badge badge-sm badge-neutral">
-                            {length(food_items)} Food
-                          </span>
-                        <% end %>
-                        <%= if length(drink_items) > 0 do %>
-                          <span class="badge badge-sm badge-info">
-                            {length(drink_items)} Drinks
-                          </span>
-                        <% end %>
+                    <div class="flex items-start gap-3">
+                      <%= if order.vendor.logo_url do %>
+                        <img
+                          src={order.vendor.logo_url}
+                          alt={order.vendor.name}
+                          class="w-12 h-12 rounded-lg object-cover"
+                        />
+                      <% else %>
+                        <div class="w-12 h-12 rounded-lg bg-base-300 flex items-center justify-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-6 h-6 text-base-content/50"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z"
+                            />
+                          </svg>
+                        </div>
+                      <% end %>
+                      <div>
+                        <h4 class="text-lg font-bold">{order.vendor.name}</h4>
+                        <p class="text-sm text-base-content/70">Order #{order.order_number}</p>
+                        <% food_items =
+                          Enum.filter(order.order_items, &(&1.menu_item.category == "food")) %>
+                        <% drink_items =
+                          Enum.filter(order.order_items, &(&1.menu_item.category == "drinks")) %>
+                        <div class="flex gap-2 mt-1">
+                          <%= if length(food_items) > 0 do %>
+                            <span class="badge badge-sm badge-neutral">
+                              {length(food_items)} Food
+                            </span>
+                          <% end %>
+                          <%= if length(drink_items) > 0 do %>
+                            <span class="badge badge-sm badge-info">
+                              {length(drink_items)} Drinks
+                            </span>
+                          <% end %>
+                        </div>
                       </div>
                     </div>
                     <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-lg"}>
