@@ -40,12 +40,12 @@ defmodule RiverSideWeb.Router do
       on_mount: [{RiverSideWeb.UserAuth, :mount_guest_scope}] do
       live "/checkin/:table_number", CustomerLive.Checkin, :new
       live "/menu", CustomerLive.Menu, :index
+      live "/cart", CustomerLive.Cart, :index
     end
 
     # Other customer routes require active customer session
     live_session :customer,
       on_mount: [{RiverSideWeb.Hooks.RequireRole, :customer}] do
-      live "/cart", CustomerLive.Cart, :index
       live "/orders", CustomerLive.OrderTracking, :index
     end
   end
