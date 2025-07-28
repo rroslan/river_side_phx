@@ -187,5 +187,55 @@ defmodule RiverSideWeb.CustomerFlowTest do
       # With only table
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/customer/cart?table=5")
     end
+
+    test "complete flow from cart to order tracking", %{
+      conn: conn,
+      table: table,
+      vendor: vendor,
+      menu_item1: menu_item1
+    } do
+      # Setup: Go to menu and add items to cart
+      {:ok, menu_live, _html} =
+        live(conn, ~p"/customer/menu?phone=5555555555&table=#{table.number}")
+
+      # Add items to cart
+      menu_live
+      |> element("button[phx-click='add_to_cart'][phx-value-id='#{menu_item1.id}']")
+      |> render_click()
+
+      # Go to cart
+      {:ok, cart_live, html} =
+        live(conn, ~p"/customer/cart?phone=5555555555&table=#{table.number}")
+
+      assert html =~ "Your Cart"
+      assert html =~ menu_item1.name
+
+      # Place order
+      cart_live
+      |> element("button[phx-click='checkout']")
+      |> render_click()
+
+      # Should redirect to order tracking
+      {redirect_path, flash} = assert_redirect(cart_live)
+      assert flash == %{"info" => "Order placed successfully!"}
+
+      # Verify redirect path contains expected parameters
+      assert redirect_path =~ "/customer/orders"
+      assert redirect_path =~ "phone=5555555555"
+      assert redirect_path =~ "table=#{table.number}"
+      assert redirect_path =~ "order_ids="
+
+      # Follow redirect to order tracking
+      {:ok, _orders_live, html} = live(conn, redirect_path)
+
+      # Verify order tracking page
+      assert html =~ "Order Tracking"
+      assert html =~ "Table ##{table.number}"
+      assert html =~ "5555555555"
+      assert html =~ vendor.name
+      assert html =~ "Pending"
+      assert html =~ menu_item1.name
+      assert html =~ "RM 15.00"
+    end
   end
 end

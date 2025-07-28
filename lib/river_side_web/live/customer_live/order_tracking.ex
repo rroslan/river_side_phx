@@ -58,7 +58,12 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
           <h1 class="text-2xl font-bold text-base-content px-4">Order Tracking</h1>
         </div>
         <div class="flex-none">
-          <.link href={~p"/customer/menu"} class="btn btn-primary btn-sm">
+          <.link
+            href={
+              ~p"/customer/menu?phone=#{@customer_info.phone}&table=#{@customer_info.table_number}"
+            }
+            class="btn btn-primary btn-sm"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -318,17 +323,15 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
 
   @impl true
   def mount(params, _session, socket) do
-    # Get customer info from scope
-    scope = socket.assigns.current_scope
+    # Get customer info from URL parameters
+    phone = params["phone"]
+    table_number = params["table"]
+    order_ids_param = params["order_ids"]
 
-    if RiverSide.Accounts.Scope.customer?(scope) do
-      phone = RiverSide.Accounts.Scope.customer_phone(scope)
-      table_number = RiverSide.Accounts.Scope.customer_table(scope)
-      order_ids_param = params["order_ids"]
-
+    if phone && table_number do
       customer_info = %{
         phone: phone,
-        table_number: table_number
+        table_number: String.to_integer(table_number)
       }
 
       # Get order IDs from URL parameters
@@ -345,11 +348,12 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
           Enum.map(order_ids, &Vendors.get_order!/1)
           |> Enum.filter(fn order ->
             # Ensure customer can only see their own orders
-            RiverSide.Accounts.Scope.can?(scope, :view, order)
+            order.customer_name == phone &&
+              order.table_number == to_string(customer_info.table_number)
           end)
         else
           # Get all orders for this customer in this session
-          Vendors.list_customer_orders(phone, table_number)
+          Vendors.list_customer_orders(phone, customer_info.table_number)
         end
 
       # Subscribe to order updates
@@ -363,12 +367,19 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
           order.status in ["pending", "preparing", "ready"]
         end)
 
+      # Calculate total amount for all active orders
+      total_amount =
+        Enum.reduce(active_orders, Decimal.new("0"), fn order, acc ->
+          Decimal.add(acc, order.total_amount || Decimal.new("0"))
+        end)
+
       {:ok,
        socket
        |> assign(customer_info: customer_info)
        |> assign(active_orders: active_orders)
        |> assign(completed_orders: [])
-       |> assign(selected_vendor: nil)}
+       |> assign(selected_vendor: nil)
+       |> assign(total_amount: total_amount)}
     else
       {:ok, push_navigate(socket, to: ~p"/")}
     end
