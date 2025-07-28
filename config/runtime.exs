@@ -28,6 +28,21 @@ if config_env() == :prod do
       For example: ecto://USER:PASS@HOST/DATABASE
       """
 
+  # Mailer configuration for production
+  # Using Resend as the email service
+  resend_api_key = System.get_env("RESEND_API_KEY")
+
+  if resend_api_key do
+    config :river_side, RiverSide.Mailer,
+      adapter: Swoosh.Adapters.Resend,
+      api_key: resend_api_key
+  else
+    # Fallback to local adapter if no API key is set
+    config :river_side, RiverSide.Mailer, adapter: Swoosh.Adapters.Local
+  end
+
+  config :swoosh, :api_client, Swoosh.ApiClient.Finch
+
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :river_side, RiverSide.Repo,
@@ -50,7 +65,14 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # Host configuration - should be your actual domain in production
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      This should be set to your production domain, e.g., "riverside-foodcourt.com"
+      """
+
   port = String.to_integer(System.get_env("PORT") || "4000")
 
   config :river_side, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
@@ -65,7 +87,15 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0},
       port: port
     ],
-    secret_key_base: secret_key_base
+    secret_key_base: secret_key_base,
+    # Force SSL in production
+    force_ssl: [hsts: true]
+
+  # Configure upload directory for production
+  uploads_dir = System.get_env("UPLOADS_DIR") || "/app/uploads"
+  File.mkdir_p!(uploads_dir)
+
+  config :river_side, :uploads_dir, uploads_dir
 
   # ## SSL Support
   #
