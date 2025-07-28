@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="#1F2937" stroke="#10B981" stroke-width="2"/>
+
+  <!-- River Wave -->
+  <path d="M20 120 Q50 100 80 120 T140 120 T200 120" stroke="#3B82F6" stroke-width="4" fill="none" opacity="0.8"/>
+  <path d="M20 130 Q50 110 80 130 T140 130 T200 130" stroke="#60A5FA" stroke-width="3" fill="none" opacity="0.6"/>
+
+  <!-- Fork and Spoon Icons -->
+  <g transform="translate(100, 70)">
+    <!-- Fork -->
+    <g transform="translate(-25, 0)">
+      <rect x="-2" y="0" width="4" height="30" fill="#F59E0B"/>
+      <rect x="-2" y="-15" width="1" height="15" fill="#F59E0B"/>
+      <rect x="0" y="-15" width="1" height="15" fill="#F59E0B"/>
+      <rect x="2" y="-15" width="1" height="15" fill="#F59E0B"/>
+    </g>
+
+    <!-- Knife -->
+    <g transform="translate(0, 0)">
+      <rect x="-1" y="0" width="2" height="30" fill="#F59E0B"/>
+      <path d="M-1 -15 L-1 0 L3 0 Q3 -7.5 3 -15 Z" fill="#F59E0B"/>
+    </g>
+
+    <!-- Spoon -->
+    <g transform="translate(25, 0)">
+      <rect x="-1" y="0" width="2" height="30" fill="#F59E0B"/>
+      <ellipse cx="0" cy="-10" rx="5" ry="10" fill="#F59E0B"/>
+    </g>
+  </g>
+
+  <!-- Text -->
+  <text x="100" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#10B981">
+    RIVER SIDE
+  </text>
+  <text x="100" y="180" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#6B7280">
+    FOOD COURT
+  </text>
+</svg>

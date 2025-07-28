@@ -471,6 +471,8 @@ defmodule RiverSide.Vendors do
   Subscribe to vendor order updates.
   """
   def subscribe_to_vendor_orders(vendor_id) do
+    require Logger
+    Logger.info("Subscribing to vendor_orders:#{vendor_id}")
     Phoenix.PubSub.subscribe(RiverSide.PubSub, "vendor_orders:#{vendor_id}")
   end
 
@@ -483,6 +485,12 @@ defmodule RiverSide.Vendors do
 
   defp broadcast_order_update({:ok, order} = result) do
     order = get_order!(order.id)
+
+    require Logger
+
+    Logger.info(
+      "Broadcasting order update for order ##{order.id} to vendor_orders:#{order.vendor_id}"
+    )
 
     Phoenix.PubSub.broadcast(
       RiverSide.PubSub,

@@ -61,6 +61,8 @@ const Hooks = {
   ImageCropper: ImageCropper,
   NotificationSound: {
     mounted() {
+      console.log("NotificationSound hook mounted");
+
       // Create audio element for notification sound
       this.audio = new Audio(
         "data:audio/wav;base64,UklGRjIGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4GAAC8/5v/nv+h/6T/qP+r/6//sv+2/7n/vP/A/8P/x//K/87/0f/V/9j/3P/f/+P/5v/q/+3/8f/0//j/+//+/wIABgAJAA0AEAAUABcAGwAeACIAJQApACwAMAA0ADcAOwA+AEIARQBJAEwAUABTAFcAWgBeAGEAZQBoAGwAbwBzAHYAegB9AIEAhACIAIsAjwCSAJYAmQCdAKAApACoAKsArwCyALYAuQC9AMAAxADHAMsAzgDSANUA2QDdAOAA5ADnAOsA7gDyAPUA+QD8AP8AAwEHAQoBDgERARUBGAEcAR8BIwEmASoBLQExATQBOAE7AT8BQgFGAUkBTQFQAVQBVwFbAV4BYgFlAWkBbAFwAXMBdwF6AX4BgQGFAYgBjAGPAZMBlgGaAZ0BoQGkAagBqwGvAbIBtgG5Ab0BwAHEAckBzAHQAdMB1wHaAd4B4QHlAegB7AHwAfMB9wH6Af4BAQIFAggCDAIPAhMCFgIaAh4CIQIlAigCLAIvAjMCNgI6Aj0CQQJEAkgCSwJPAlICVgJZAl0CYAJkAmcCawJvAnICdgJ5An0CgAKEAocCiwKOApIClQKZAp0CoAKkAqcCqwKuArICwQLFAsgCzALPAtMC1gLaAt0C4QLkAugC6wLvAvIC9gL5Av0CAAMEAwcDCwMOAxIDFQMZAxwDIAMjAycDKgMuAzEDNQM4AzwDPwNDA0YDSgNNA1EDVANXA1sDXgNiA2UDaQNsA3ADcwN3A3oDfgOBA4UDiAOMA48DkwOWA5oDnQOhA6QDqAOrA68DsgO2A7kDvAPAA8MDxwPKA84D0QPVA9gD3APfA+MD5gPqA+0D8QPyAPYD+gP9AwEEBQQIBAwEDwQTBBYEGgQdBCEEJAQoBCsELwQyBDYEOQQ9BEAERAHDAMcEygDOBNEE1QTYBNwE3wTjBOYE6gTtBPEE9AT4BPsE/wQCBQYFCQUNBRAFFAUXBRsFHgUiBSUFKQUsBS8FMwU2BToFPQVBBUQFSAVLBU8FUgVWBVkFXQVgBWQFZwVrBW4FcgV1BXkFfAWABYMFhwWKBY4FkQWVBZgFnAWfBaMFpgWqBa0FsQW0BbgFuwW/BcIFxgXJBc0F0AXUBdcF2gXeBOEF5QXoBewF7wXzBfYF+gX9BQEGBAYIBgsGDwYSBhYGGQYdBiAGJAYnBisGLgYyBjUGOAY8Bj8GQwZGBkoGTQZRBlQGWAZbBl8GYgZlBmkGbAZwBnMGdwZ6Bn4GgQaFBogGjAaPBpMGlgaaBp0GoQakBqgGqwaoBq8GlgawBrUGuQa8BsAGwwbGBsAGqAawBpYGlgaoBsAGxgbABqgGlgY=",
@@ -68,11 +70,18 @@ const Hooks = {
 
       // Handle the custom event from LiveView
       this.handleEvent("play-notification-sound", () => {
+        console.log("Received play-notification-sound event");
+
         // Play the notification sound
-        this.audio.play().catch((e) => {
-          // Handle autoplay restrictions
-          console.log("Could not play notification sound:", e);
-        });
+        this.audio
+          .play()
+          .then(() => {
+            console.log("Notification sound played successfully");
+          })
+          .catch((e) => {
+            // Handle autoplay restrictions
+            console.log("Could not play notification sound:", e);
+          });
       });
     },
   },
