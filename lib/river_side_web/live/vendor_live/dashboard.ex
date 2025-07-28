@@ -57,7 +57,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-base-200">
+    <div class="min-h-screen bg-base-200" id="vendor-dashboard" phx-hook="NotificationSound">
       <!-- Navigation -->
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
@@ -758,6 +758,9 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
       # Subscribe to real-time updates
       Vendors.subscribe_to_vendor_orders(vendor.id)
 
+      require Logger
+      Logger.info("Vendor Dashboard: Subscribed to vendor_orders:#{vendor.id}")
+
       # Load initial data
       menu_items = Vendors.list_menu_items(vendor.id)
       active_orders = Vendors.list_active_orders(vendor.id)
@@ -909,7 +912,14 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   end
 
   @impl true
-  def handle_info({:order_updated, _order}, socket) do
+  def handle_info({:order_updated, order}, socket) do
+    # Log the incoming order update
+    require Logger
+
+    Logger.info(
+      "Vendor Dashboard: Received order update for order ##{order.id}, vendor_id: #{order.vendor_id}, my vendor_id: #{socket.assigns.vendor.id}"
+    )
+
     # Update orders in real-time
     active_orders = Vendors.list_active_orders(socket.assigns.vendor.id)
 
@@ -919,8 +929,24 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
 
     sales_stats = Vendors.get_vendor_sales_stats(socket.assigns.vendor.id)
 
+    # Check if this is a new order (status is pending and it's for our vendor)
+    {flash_socket, should_play_sound} =
+      if order.status == "pending" && order.vendor_id == socket.assigns.vendor.id do
+        {put_flash(socket, :info, "New order received! Table #{order.table_number}"), true}
+      else
+        {socket, false}
+      end
+
+    # Push event to play sound if it's a new order
+    final_socket =
+      if should_play_sound do
+        push_event(flash_socket, "play-notification-sound", %{})
+      else
+        flash_socket
+      end
+
     {:noreply,
-     socket
+     final_socket
      |> assign(active_orders: active_orders)
      |> assign(completed_orders: completed_orders)
      |> assign(sales_stats: sales_stats)}
