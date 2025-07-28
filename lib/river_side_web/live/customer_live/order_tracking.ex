@@ -361,6 +361,9 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
         Vendors.subscribe_to_order_updates(order.id)
       end)
 
+      # Subscribe to new orders for this customer session
+      Vendors.subscribe_to_customer_session(phone, customer_info.table_number)
+
       # Only show active orders to customers (not completed ones)
       active_orders =
         Enum.filter(orders, fn order ->
@@ -395,11 +398,30 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
   def handle_info({:order_updated, updated_order}, socket) do
     # Check if customer can view this order
     if RiverSide.Accounts.Scope.can?(socket.assigns.current_scope, :view, updated_order) do
-      # Update the specific order in our lists
-      active_orders =
-        Enum.map(socket.assigns.active_orders, fn order ->
-          if order.id == updated_order.id, do: updated_order, else: order
+      # Check if this is a new order we don't have yet
+      order_exists =
+        Enum.any?(socket.assigns.active_orders, fn order ->
+          order.id == updated_order.id
         end)
+
+      active_orders =
+        if order_exists do
+          # Update existing order
+          Enum.map(socket.assigns.active_orders, fn order ->
+            if order.id == updated_order.id, do: updated_order, else: order
+          end)
+        else
+          # Add new order if it's for our session and active
+          if updated_order.customer_name == socket.assigns.customer_info.phone &&
+               updated_order.table_number == to_string(socket.assigns.customer_info.table_number) &&
+               updated_order.status in ["pending", "preparing", "ready"] do
+            # Subscribe to this new order's updates
+            Vendors.subscribe_to_order_updates(updated_order.id)
+            [updated_order | socket.assigns.active_orders]
+          else
+            socket.assigns.active_orders
+          end
+        end
 
       # Keep only pending, preparing, and ready orders in active list for customers
       new_active =
@@ -407,9 +429,12 @@ defmodule RiverSideWeb.CustomerLive.OrderTracking do
           order.status in ["pending", "preparing", "ready"]
         end)
 
+      # Sort by created_at descending (newest first)
+      sorted_active = Enum.sort_by(new_active, & &1.inserted_at, {:desc, DateTime})
+
       {:noreply,
        socket
-       |> assign(active_orders: new_active)
+       |> assign(active_orders: sorted_active)
        |> assign(completed_orders: [])}
     else
       # Customer shouldn't see this order update

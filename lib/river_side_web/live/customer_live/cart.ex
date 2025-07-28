@@ -362,9 +362,7 @@ defmodule RiverSideWeb.CustomerLive.Cart do
       # Check if all orders were created successfully
       case Enum.find(order_results, fn {status, _} -> status == :error end) do
         nil ->
-          # All orders successful, get the order IDs
-          order_ids = Enum.map(order_results, fn {:ok, order} -> order.id end)
-
+          # All orders successful
           # Clear the cart from the table
           Tables.clear_cart(socket.assigns.table)
 
@@ -374,7 +372,7 @@ defmodule RiverSideWeb.CustomerLive.Cart do
            |> put_flash(:info, "Order placed successfully!")
            |> push_navigate(
              to:
-               ~p"/customer/orders?phone=#{URI.encode(customer_info.phone)}&table=#{customer_info.table_number}&order_ids=#{Enum.join(order_ids, ",")}"
+               ~p"/customer/orders?phone=#{URI.encode(customer_info.phone)}&table=#{customer_info.table_number}"
            )}
 
         error ->

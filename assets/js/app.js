@@ -68,9 +68,39 @@ const Hooks = {
         "data:audio/wav;base64,UklGRjIGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4GAAC8/5v/nv+h/6T/qP+r/6//sv+2/7n/vP/A/8P/x//K/87/0f/V/9j/3P/f/+P/5v/q/+3/8f/0//j/+//+/wIABgAJAA0AEAAUABcAGwAeACIAJQApACwAMAA0ADcAOwA+AEIARQBJAEwAUABTAFcAWgBeAGEAZQBoAGwAbwBzAHYAegB9AIEAhACIAIsAjwCSAJYAmQCdAKAApACoAKsArwCyALYAuQC9AMAAxADHAMsAzgDSANUA2QDdAOAA5ADnAOsA7gDyAPUA+QD8AP8AAwEHAQoBDgERARUBGAEcAR8BIwEmASoBLQExATQBOAE7AT8BQgFGAUkBTQFQAVQBVwFbAV4BYgFlAWkBbAFwAXMBdwF6AX4BgQGFAYgBjAGPAZMBlgGaAZ0BoQGkAagBqwGvAbIBtgG5Ab0BwAHEAckBzAHQAdMB1wHaAd4B4QHlAegB7AHwAfMB9wH6Af4BAQIFAggCDAIPAhMCFgIaAh4CIQIlAigCLAIvAjMCNgI6Aj0CQQJEAkgCSwJPAlICVgJZAl0CYAJkAmcCawJvAnICdgJ5An0CgAKEAocCiwKOApIClQKZAp0CoAKkAqcCqwKuArICwQLFAsgCzALPAtMC1gLaAt0C4QLkAugC6wLvAvIC9gL5Av0CAAMEAwcDCwMOAxIDFQMZAxwDIAMjAycDKgMuAzEDNQM4AzwDPwNDA0YDSgNNA1EDVANXA1sDXgNiA2UDaQNsA3ADcwN3A3oDfgOBA4UDiAOMA48DkwOWA5oDnQOhA6QDqAOrA68DsgO2A7kDvAPAA8MDxwPKA84D0QPVA9gD3APfA+MD5gPqA+0D8QPyAPYD+gP9AwEEBQQIBAwEDwQTBBYEGgQdBCEEJAQoBCsELwQyBDYEOQQ9BEAERAHDAMcEygDOBNEE1QTYBNwE3wTjBOYE6gTtBPEE9AT4BPsE/wQCBQYFCQUNBRAFFAUXBRsFHgUiBSUFKQUsBS8FMwU2BToFPQVBBUQFSAVLBU8FUgVWBVkFXQVgBWQFZwVrBW4FcgV1BXkFfAWABYMFhwWKBY4FkQWVBZgFnAWfBaMFpgWqBa0FsQW0BbgFuwW/BcIFxgXJBc0F0AXUBdcF2gXeBOEF5QXoBewF7wXzBfYF+gX9BQEGBAYIBgsGDwYSBhYGGQYdBiAGJAYnBisGLgYyBjUGOAY8Bj8GQwZGBkoGTQZRBlQGWAZbBl8GYgZlBmkGbAZwBnMGdwZ6Bn4GgQaFBogGjAaPBpMGlgaaBp0GoQakBqgGqwaoBq8GlgawBrUGuQa8BsAGwwbGBsAGqAawBpYGlgaoBsAGxgbABqgGlgY=",
       );
 
+      // Track if sound is enabled
+      this.soundEnabled = false;
+
+      // Enable sound on first user interaction
+      const enableSound = () => {
+        if (!this.soundEnabled) {
+          this.soundEnabled = true;
+          console.log("Sound notifications enabled");
+          // Try to play a silent sound to unlock audio
+          this.audio.volume = 0;
+          this.audio
+            .play()
+            .then(() => {
+              this.audio.volume = 1;
+              this.audio.pause();
+              this.audio.currentTime = 0;
+            })
+            .catch(() => {});
+        }
+      };
+
+      // Add click listener to enable sound
+      document.addEventListener("click", enableSound, { once: true });
+      document.addEventListener("keydown", enableSound, { once: true });
+
       // Handle the custom event from LiveView
       this.handleEvent("play-notification-sound", () => {
         console.log("Received play-notification-sound event");
+
+        if (!this.soundEnabled) {
+          console.log("Sound not yet enabled - waiting for user interaction");
+          return;
+        }
 
         // Play the notification sound
         this.audio

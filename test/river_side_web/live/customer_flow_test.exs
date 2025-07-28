@@ -223,7 +223,7 @@ defmodule RiverSideWeb.CustomerFlowTest do
       assert redirect_path =~ "/customer/orders"
       assert redirect_path =~ "phone=5555555555"
       assert redirect_path =~ "table=#{table.number}"
-      assert redirect_path =~ "order_ids="
+      # No longer expecting order_ids in the redirect
 
       # Follow redirect to order tracking
       {:ok, _orders_live, html} = live(conn, redirect_path)

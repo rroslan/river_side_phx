@@ -57,7 +57,9 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-base-200" id="vendor-dashboard" phx-hook="NotificationSound">
+    <div class="min-h-screen bg-base-200">
+      <!-- Hidden element for notification sound hook -->
+      <div id="notification-sound-hook" phx-hook="NotificationSound"></div>
       <!-- Navigation -->
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
@@ -761,9 +763,15 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
       require Logger
       Logger.info("Vendor Dashboard: Subscribed to vendor_orders:#{vendor.id}")
 
+      Logger.info(
+        "Vendor Dashboard: Loading initial data for vendor #{vendor.name} (ID: #{vendor.id})"
+      )
+
       # Load initial data
       menu_items = Vendors.list_menu_items(vendor.id)
       active_orders = Vendors.list_active_orders(vendor.id)
+
+      Logger.info("Vendor Dashboard: Found #{length(active_orders)} active orders")
 
       completed_orders =
         Vendors.list_todays_orders(vendor.id) |> Enum.filter(&(&1.status == "completed"))
@@ -917,11 +925,22 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     require Logger
 
     Logger.info(
-      "Vendor Dashboard: Received order update for order ##{order.id}, vendor_id: #{order.vendor_id}, my vendor_id: #{socket.assigns.vendor.id}"
+      "Vendor Dashboard: Received order update for order ##{order.id}, vendor_id: #{order.vendor_id}, my vendor_id: #{socket.assigns.vendor.id}, status: #{order.status}"
     )
+
+    # Only process if this order is for our vendor
+    if order.vendor_id == socket.assigns.vendor.id do
+      Logger.info("Vendor Dashboard: Processing order update for our vendor")
+    else
+      Logger.info("Vendor Dashboard: Ignoring order update for different vendor")
+    end
 
     # Update orders in real-time
     active_orders = Vendors.list_active_orders(socket.assigns.vendor.id)
+
+    Logger.info(
+      "Vendor Dashboard: Refreshed active orders list, now have #{length(active_orders)} active orders"
+    )
 
     completed_orders =
       Vendors.list_todays_orders(socket.assigns.vendor.id)

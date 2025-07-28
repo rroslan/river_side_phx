@@ -272,8 +272,11 @@ defmodule RiverSide.Vendors do
 
           # Update order with total
           case update_order_total(order, %{total_amount: total}) do
-            {:ok, order} ->
-              get_order!(order.id)
+            {:ok, updated_order} ->
+              # Get the full order with associations and broadcast it
+              full_order = get_order!(updated_order.id)
+              broadcast_order_update({:ok, full_order})
+              full_order
 
             {:error, changeset} ->
               Repo.rollback(changeset)
@@ -323,6 +326,13 @@ defmodule RiverSide.Vendors do
             {:ok, updated_order} ->
               # Broadcast the new order
               full_order = get_order!(updated_order.id)
+
+              require Logger
+
+              Logger.info(
+                "Order created successfully - ID: #{full_order.id}, broadcasting updates..."
+              )
+
               broadcast_order_update({:ok, full_order})
               full_order
 
@@ -489,7 +499,7 @@ defmodule RiverSide.Vendors do
     require Logger
 
     Logger.info(
-      "Broadcasting order update for order ##{order.id} to vendor_orders:#{order.vendor_id}"
+      "Broadcasting order update for order ##{order.id} (status: #{order.status}) to vendor_orders:#{order.vendor_id}"
     )
 
     Phoenix.PubSub.broadcast(
@@ -498,17 +508,32 @@ defmodule RiverSide.Vendors do
       {:order_updated, order}
     )
 
+    Logger.info("Broadcast sent to vendor_orders:#{order.vendor_id}")
+
     Phoenix.PubSub.broadcast(
       RiverSide.PubSub,
       "orders:all",
       {:order_updated, order}
     )
 
+    Logger.info("Broadcast sent to orders:all")
+
     Phoenix.PubSub.broadcast(
       RiverSide.PubSub,
       "order:#{order.id}",
       {:order_updated, order}
     )
+
+    Logger.info("Broadcast sent to order:#{order.id}")
+
+    # Broadcast to customer session channel
+    Phoenix.PubSub.broadcast(
+      RiverSide.PubSub,
+      "customer_session:#{order.customer_name}:#{order.table_number}",
+      {:order_updated, order}
+    )
+
+    Logger.info("Broadcast sent to customer_session:#{order.customer_name}:#{order.table_number}")
 
     result
   end
@@ -520,6 +545,13 @@ defmodule RiverSide.Vendors do
   """
   def subscribe_to_order_updates(order_id) do
     Phoenix.PubSub.subscribe(RiverSide.PubSub, "order:#{order_id}")
+  end
+
+  @doc """
+  Subscribe to new orders for a customer session (phone + table).
+  """
+  def subscribe_to_customer_session(phone, table_number) do
+    Phoenix.PubSub.subscribe(RiverSide.PubSub, "customer_session:#{phone}:#{table_number}")
   end
 
   @doc """
