@@ -35,16 +35,16 @@ defmodule RiverSideWeb.Router do
   scope "/customer", RiverSideWeb do
     pipe_through :browser
 
-    # Checkin doesn't require customer scope
+    # Checkin and menu don't require customer scope
     live_session :customer_checkin,
       on_mount: [{RiverSideWeb.UserAuth, :mount_guest_scope}] do
       live "/checkin/:table_number", CustomerLive.Checkin, :new
+      live "/menu", CustomerLive.Menu, :index
     end
 
     # Other customer routes require active customer session
     live_session :customer,
       on_mount: [{RiverSideWeb.Hooks.RequireRole, :customer}] do
-      live "/menu", CustomerLive.Menu, :index
       live "/cart", CustomerLive.Cart, :index
       live "/orders", CustomerLive.OrderTracking, :index
     end
