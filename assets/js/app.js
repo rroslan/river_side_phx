@@ -59,6 +59,21 @@ const csrfToken = document
 const Hooks = {
   ...colocatedHooks,
   ImageCropper: ImageCropper,
+  ReportsDownload: {
+    mounted() {
+      this.handleEvent("download", ({ filename, content, type }) => {
+        const blob = new Blob([content], { type: type || "text/plain" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      });
+    },
+  },
   VendorDashboard: {
     mounted() {
       console.log("VendorDashboard hook mounted");

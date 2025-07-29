@@ -155,9 +155,33 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
         <div class="card bg-base-100 shadow-xl mb-8">
           <div class="card-body">
             <div class="flex justify-between items-center mb-4">
-              <h2 class="card-title text-2xl">Active Orders by Table</h2>
-              <div class="text-sm text-base-content/60">
-                <span class="font-semibold">{length(@orders_by_table)}</span> tables with orders
+              <h2 class="card-title text-2xl">
+                Active Orders by {(@view_mode == "table" && "Table") || "Vendor"}
+              </h2>
+              <div class="flex gap-4 items-center">
+                <div class="text-sm text-base-content/60">
+                  <%= if @view_mode == "table" do %>
+                    <span class="font-semibold">{length(@orders_by_table)}</span> tables with orders
+                  <% else %>
+                    <span class="font-semibold">{length(@orders_by_vendor)}</span> vendors with orders
+                  <% end %>
+                </div>
+                <div class="tabs tabs-boxed">
+                  <button
+                    class={"tab #{if @view_mode == "table", do: "tab-active"}"}
+                    phx-click="toggle_view_mode"
+                    phx-value-mode="table"
+                  >
+                    By Table
+                  </button>
+                  <button
+                    class={"tab #{if @view_mode == "vendor", do: "tab-active"}"}
+                    phx-click="toggle_view_mode"
+                    phx-value-mode="vendor"
+                  >
+                    By Vendor
+                  </button>
+                </div>
               </div>
             </div>
             <%= if Enum.empty?(@active_orders) do %>
@@ -165,91 +189,182 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
                 <p class="text-base-content/60">No active orders at the moment</p>
               </div>
             <% else %>
-              <!-- Table View -->
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <%= for {table_number, table_data} <- @orders_by_table do %>
-                  <div class="card bg-base-200 shadow-xl">
-                    <div class="card-body">
-                      <div class="flex justify-between items-start">
-                        <h3 class="card-title">Table #{table_number}</h3>
-                        <%= if table_data.all_paid do %>
-                          <span class="badge badge-success">All Paid</span>
-                        <% else %>
-                          <% paid_count = Enum.count(table_data.orders, & &1.paid) %>
-                          <span class="badge badge-warning">
-                            {paid_count}/{table_data.order_count} Paid
-                          </span>
-                        <% end %>
-                      </div>
+              <%= if @view_mode == "table" do %>
+                <!-- Table View -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <%= for {table_number, table_data} <- @orders_by_table do %>
+                    <div class="card bg-base-200 shadow-xl">
+                      <div class="card-body">
+                        <div class="flex justify-between items-start">
+                          <h3 class="card-title">Table #{table_number}</h3>
+                          <%= if table_data.all_paid do %>
+                            <span class="badge badge-success">All Paid</span>
+                          <% else %>
+                            <% paid_count = Enum.count(table_data.orders, & &1.paid) %>
+                            <span class="badge badge-warning">
+                              {paid_count}/{table_data.order_count} Paid
+                            </span>
+                          <% end %>
+                        </div>
 
-                      <div class="mt-2 space-y-2">
-                        <%= for order <- table_data.orders do %>
-                          <div class={"p-2 rounded #{OrderStatusHelper.status_bg_class(order.status, order.paid)}"}>
-                            <div class="flex justify-between items-center">
-                              <div>
-                                <p class="font-semibold text-sm">{order.vendor.name}</p>
-                                <p class="text-xs text-base-content/60">#{order.order_number}</p>
+                        <div class="mt-2 space-y-2">
+                          <%= for order <- table_data.orders do %>
+                            <div class={"p-2 rounded #{OrderStatusHelper.status_bg_class(order.status, order.paid)}"}>
+                              <div class="flex justify-between items-center">
+                                <div>
+                                  <p class="font-semibold text-sm">{order.vendor.name}</p>
+                                  <p class="text-xs text-base-content/60">#{order.order_number}</p>
+                                </div>
+                                <div class="text-right">
+                                  <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-sm"}>
+                                    {OrderStatusHelper.status_text(order.status)}
+                                  </span>
+                                  <%= cond do %>
+                                    <% order.status == "ready" && order.paid -> %>
+                                      <div class="text-xs text-success font-semibold">
+                                        ✓ Ready to complete
+                                      </div>
+                                    <% order.status == "ready" && !order.paid -> %>
+                                      <div class="text-xs text-warning font-semibold">
+                                        ⚠ Awaiting payment
+                                      </div>
+                                    <% true -> %>
+                                  <% end %>
+                                  <p class="text-sm font-semibold mt-1">
+                                    RM {format_currency(order.total_amount)}
+                                  </p>
+                                </div>
                               </div>
-                              <div class="text-right">
-                                <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-sm"}>
-                                  {OrderStatusHelper.status_text(order.status)}
-                                </span>
-                                <%= cond do %>
-                                  <% order.status == "ready" && order.paid -> %>
-                                    <div class="text-xs text-success font-semibold">
-                                      ✓ Ready to complete
-                                    </div>
-                                  <% order.status == "ready" && !order.paid -> %>
-                                    <div class="text-xs text-warning font-semibold">
-                                      ⚠ Awaiting payment
-                                    </div>
-                                  <% true -> %>
-                                <% end %>
-                                <p class="text-sm font-semibold mt-1">
-                                  RM {format_currency(order.total_amount)}
-                                </p>
-                              </div>
+                              <%= if order.status == "ready" && !order.paid do %>
+                                <button
+                                  phx-click="mark_as_paid"
+                                  phx-value-id={order.id}
+                                  class="btn btn-warning btn-xs w-full mt-2"
+                                >
+                                  Mark as Paid
+                                </button>
+                              <% end %>
                             </div>
-                            <%= if order.status == "ready" && !order.paid do %>
-                              <button
-                                phx-click="mark_as_paid"
-                                phx-value-id={order.id}
-                                class="btn btn-warning btn-xs w-full mt-2"
-                              >
-                                Mark as Paid
-                              </button>
-                            <% end %>
-                          </div>
-                        <% end %>
-                      </div>
+                          <% end %>
+                        </div>
 
-                      <div class="divider my-2"></div>
+                        <div class="divider my-2"></div>
 
-                      <div class="flex justify-between items-center font-bold">
-                        <span>Total</span>
-                        <span class="text-lg">RM {format_currency(table_data.total_amount)}</span>
-                      </div>
+                        <div class="flex justify-between items-center font-bold">
+                          <span>Total</span>
+                          <span class="text-lg">RM {format_currency(table_data.total_amount)}</span>
+                        </div>
 
-                      <div class="card-actions justify-end mt-4">
-                        <% ready_unpaid_count =
-                          Enum.count(table_data.orders, fn o -> o.status == "ready" && !o.paid end) %>
-                        <%= if ready_unpaid_count > 0 do %>
-                          <div class="text-xs text-warning font-semibold">
-                            {ready_unpaid_count} ready to pay
-                          </div>
-                        <% end %>
-                        <button
-                          phx-click="view_table_orders"
-                          phx-value-table={table_number}
-                          class="btn btn-primary btn-sm"
-                        >
-                          View Details
-                        </button>
+                        <div class="card-actions justify-end mt-4">
+                          <% ready_unpaid_count =
+                            Enum.count(table_data.orders, fn o -> o.status == "ready" && !o.paid end) %>
+                          <%= if ready_unpaid_count > 0 do %>
+                            <div class="text-xs text-warning font-semibold">
+                              {ready_unpaid_count} ready to pay
+                            </div>
+                          <% end %>
+                          <button
+                            phx-click="view_table_orders"
+                            phx-value-table={table_number}
+                            class="btn btn-primary btn-sm"
+                          >
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                <% end %>
-              </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <!-- Vendor View -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <%= for {vendor_id, vendor_data} <- @orders_by_vendor do %>
+                    <div class="card bg-base-200 shadow-xl">
+                      <div class="card-body">
+                        <div class="flex justify-between items-start">
+                          <h3 class="card-title">{vendor_data.vendor_name}</h3>
+                          <div class="text-right">
+                            <% paid_count = Enum.count(vendor_data.orders, & &1.paid) %>
+                            <span class="badge badge-info">
+                              {vendor_data.order_count} orders
+                            </span>
+                            <%= if paid_count > 0 do %>
+                              <span class="badge badge-success">
+                                {paid_count} paid
+                              </span>
+                            <% end %>
+                          </div>
+                        </div>
+
+                        <div class="mt-2 space-y-2">
+                          <%= for order <- vendor_data.orders do %>
+                            <div class={"p-2 rounded #{OrderStatusHelper.status_bg_class(order.status, order.paid)}"}>
+                              <div class="flex justify-between items-center">
+                                <div>
+                                  <p class="font-semibold text-sm">Table #{order.table_number}</p>
+                                  <p class="text-xs text-base-content/60">#{order.order_number}</p>
+                                </div>
+                                <div class="text-right">
+                                  <span class={OrderStatusHelper.status_badge_class(order.status) <> " badge-sm"}>
+                                    {OrderStatusHelper.status_text(order.status)}
+                                  </span>
+                                  <%= cond do %>
+                                    <% order.status == "ready" && order.paid -> %>
+                                      <div class="text-xs text-success font-semibold">
+                                        ✓ Ready to complete
+                                      </div>
+                                    <% order.status == "ready" && !order.paid -> %>
+                                      <div class="text-xs text-warning font-semibold">
+                                        ⚠ Awaiting payment
+                                      </div>
+                                    <% true -> %>
+                                  <% end %>
+                                  <p class="text-sm font-semibold mt-1">
+                                    RM {format_currency(order.total_amount)}
+                                  </p>
+                                </div>
+                              </div>
+                              <%= if order.status == "ready" && !order.paid do %>
+                                <button
+                                  phx-click="mark_as_paid"
+                                  phx-value-id={order.id}
+                                  class="btn btn-warning btn-xs w-full mt-2"
+                                >
+                                  Mark as Paid
+                                </button>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+
+                        <div class="divider my-2"></div>
+
+                        <div class="flex justify-between items-center font-bold">
+                          <span>Total</span>
+                          <span class="text-lg">RM {format_currency(vendor_data.total_amount)}</span>
+                        </div>
+
+                        <div class="card-actions justify-end mt-4">
+                          <% ready_unpaid_count =
+                            Enum.count(vendor_data.orders, fn o -> o.status == "ready" && !o.paid end) %>
+                          <%= if ready_unpaid_count > 0 do %>
+                            <div class="text-xs text-warning font-semibold">
+                              {ready_unpaid_count} ready to pay
+                            </div>
+                          <% end %>
+                          <button
+                            phx-click="view_vendor_orders"
+                            phx-value-vendor={vendor_id}
+                            class="btn btn-primary btn-sm"
+                          >
+                            View All
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             <% end %>
           </div>
         </div>
@@ -436,10 +551,10 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
             <div class="space-y-4 max-h-96 overflow-y-auto">
               <%= for order <- @table_orders || [] do %>
                 <div class={"card #{cond do
-                  order.status == "ready" && order.paid -> "bg-success/20 border-2 border-success"
-                  order.status == "ready" && !order.paid -> "bg-warning/20 border-2 border-warning"
-                  true -> "bg-base-200"
-                end}"}>
+                    order.status == "ready" && order.paid -> "bg-success/20 border-2 border-success"
+                    order.status == "ready" && !order.paid -> "bg-warning/20 border-2 border-warning"
+                    true -> "bg-base-200"
+                  end}"}>
                   <div class="card-body p-4">
                     <div class="flex justify-between items-start">
                       <div>
@@ -539,6 +654,73 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
           </div>
         </div>
       <% end %>
+      
+    <!-- Vendor Orders Modal -->
+      <%= if assigns[:show_vendor_modal] && assigns[:vendor_orders] do %>
+        <div class="modal modal-open">
+          <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg mb-4">
+              All Orders for {List.first(@vendor_orders).vendor.name}
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="table w-full">
+                <thead>
+                  <tr>
+                    <th>Order #</th>
+                    <th>Table</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Payment</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for order <- @vendor_orders do %>
+                    <tr class="hover">
+                      <td class="font-mono">{order.order_number}</td>
+                      <td>Table #{order.table_number}</td>
+                      <td>
+                        <span class={OrderStatusHelper.status_badge_class(order.status)}>
+                          {OrderStatusHelper.status_text(order.status)}
+                        </span>
+                      </td>
+                      <td class="font-semibold">RM {format_currency(order.total_amount)}</td>
+                      <td>
+                        <%= if order.paid do %>
+                          <span class="badge badge-success">Paid</span>
+                        <% else %>
+                          <span class="badge badge-warning">Unpaid</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <button
+                          phx-click="view_order"
+                          phx-value-id={order.id}
+                          class="btn btn-ghost btn-xs"
+                        >
+                          View
+                        </button>
+                        <%= if order.status == "ready" && !order.paid do %>
+                          <button
+                            phx-click="mark_as_paid"
+                            phx-value-id={order.id}
+                            class="btn btn-warning btn-xs"
+                          >
+                            Mark Paid
+                          </button>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-action">
+              <button phx-click="close_vendor_modal" class="btn">Close</button>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -553,7 +735,9 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
      socket
      |> assign(show_order_modal: false, selected_order: nil)
      |> assign(show_table_modal: false, selected_table: nil)
+     |> assign(show_vendor_modal: false, vendor_orders: nil)
      |> assign(table_orders: [])
+     |> assign(view_mode: "table")
      |> load_orders()
      |> load_stats()}
   end
@@ -567,6 +751,26 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
   @impl true
   def handle_event("close_order_modal", _params, socket) do
     {:noreply, assign(socket, show_order_modal: false, selected_order: nil)}
+  end
+
+  def handle_event("close_vendor_modal", _params, socket) do
+    {:noreply, assign(socket, show_vendor_modal: false, vendor_orders: nil)}
+  end
+
+  def handle_event("toggle_view_mode", %{"mode" => mode}, socket) do
+    {:noreply, assign(socket, view_mode: mode)}
+  end
+
+  def handle_event("view_vendor_orders", %{"vendor" => vendor_id}, socket) do
+    vendor_orders =
+      socket.assigns.active_orders
+      |> Enum.filter(&(&1.vendor_id == String.to_integer(vendor_id)))
+      |> Enum.sort_by(& &1.inserted_at, :asc)
+
+    {:noreply,
+     socket
+     |> assign(show_vendor_modal: true)
+     |> assign(vendor_orders: vendor_orders)}
   end
 
   @impl true
@@ -860,12 +1064,14 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
       |> Enum.sort_by(& &1.updated_at, :desc)
       |> Enum.take(10)
 
-    # Group active orders by table
+    # Group active orders by table and vendor
     orders_by_table = group_orders_by_table(active_orders)
+    orders_by_vendor = group_orders_by_vendor(active_orders)
 
     assign(socket,
       active_orders: active_orders,
       orders_by_table: orders_by_table,
+      orders_by_vendor: orders_by_vendor,
       completed_orders: completed_orders
     )
   end
@@ -892,6 +1098,28 @@ defmodule RiverSideWeb.CashierLive.Dashboard do
        }}
     end)
     |> Enum.sort_by(fn {table_num, _} -> String.to_integer(table_num) end)
+  end
+
+  defp group_orders_by_vendor(orders) do
+    orders
+    |> Enum.group_by(& &1.vendor_id)
+    |> Enum.map(fn {vendor_id, vendor_orders} ->
+      vendor_name = List.first(vendor_orders).vendor.name
+
+      total_amount =
+        Enum.reduce(vendor_orders, Decimal.new("0"), fn order, acc ->
+          Decimal.add(acc, order.total_amount)
+        end)
+
+      {vendor_id,
+       %{
+         vendor_name: vendor_name,
+         orders: vendor_orders,
+         total_amount: total_amount,
+         order_count: length(vendor_orders)
+       }}
+    end)
+    |> Enum.sort_by(fn {_, data} -> data.vendor_name end)
   end
 
   defp load_stats(socket) do

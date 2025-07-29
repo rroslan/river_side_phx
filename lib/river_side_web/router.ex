@@ -94,6 +94,7 @@ defmodule RiverSideWeb.Router do
       on_mount: [{RiverSideWeb.Hooks.RequireRole, :admin}] do
       live "/dashboard", AdminLive.Dashboard, :index
       live "/vendors", AdminLive.VendorList, :index
+      live "/reports", AdminLive.Reports, :index
     end
   end
 
