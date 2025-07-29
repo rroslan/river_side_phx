@@ -128,6 +128,19 @@ jobs:
               path = Application.app_dir(:river_side, \"priv/repo/migrations\")
               Ecto.Migrator.run(RiverSide.Repo, path, :up, all: true)
             "
+                        echo "--- Running Seeds (if configured) ---"
+            # Only run seeds if all email variables are set
+            if [ ! -z "$ADMIN_EMAIL" ] && [ ! -z "$CASHIER_EMAIL" ] && [ ! -z "$DRINKS_VENDOR_EMAIL" ] && [ ! -z "$FOOD_VENDOR_EMAIL" ]; then
+              echo "Running database seeds..."
+              _build/prod/rel/river_side/bin/river_side eval "
+                Application.load(:river_side)
+                Application.ensure_all_started(:river_side)
+                Code.eval_file(\"priv/repo/seeds.exs\")
+              " || echo "Seeds may have already been run or encountered an error"
+            else
+              echo "Skipping seeds - email environment variables not fully configured"
+            fi
+
 
             echo "--- Restarting Application Service ($SERVICE_NAME) ---"
             # Ensure VPS_SSH_USER has passwordless sudo rights for this command
