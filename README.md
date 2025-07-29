@@ -1,6 +1,12 @@
 # River Side Food Court Management System
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/river_side/releases/tag/v1.0.0)
+[![Elixir](https://img.shields.io/badge/elixir-1.15+-purple.svg)](https://elixir-lang.org/)
+[![Phoenix](https://img.shields.io/badge/phoenix-1.8.0-orange.svg)](https://www.phoenixframework.org/)
+
 A comprehensive food court management system built with Phoenix LiveView, featuring role-based access control, vendor management, and real-time order processing.
+
+**Version 1.0.0** - First stable release with complete functionality for managing multi-vendor food courts.
 
 ## Features
 
