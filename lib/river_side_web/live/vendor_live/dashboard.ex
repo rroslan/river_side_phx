@@ -1071,7 +1071,11 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     # Check if this is a new order (status is pending and it's for our vendor)
     {flash_socket, should_play_sound} =
       if order.status == "pending" && order.vendor_id == socket.assigns.vendor.id do
-        {put_flash(socket, :info, "New order received! Table #{order.table_number}"), true}
+        {put_flash(
+           socket,
+           :info,
+           "New order received! Table #{order.table_number} - Please refresh if not visible"
+         ), true}
       else
         {socket, false}
       end
