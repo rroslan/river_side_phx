@@ -28,11 +28,12 @@ Repo.delete_all(RiverSide.Tables.Table)
 Repo.delete_all(User)
 
 # Create admin user
+# Uses ADMIN_EMAIL environment variable or falls back to default
 IO.puts("\nCreating admin user...")
 
 {:ok, admin} =
   Accounts.register_user(%{
-    email: System.get_env("ADMIN_EMAIL", "rroslan@gmail.com"),
+    email: System.get_env("ADMIN_EMAIL") || raise("ADMIN_EMAIL environment variable is required"),
     is_admin: true,
     is_vendor: false,
     is_cashier: false
@@ -41,11 +42,13 @@ IO.puts("\nCreating admin user...")
 IO.puts("✅ Created admin user: #{admin.email}")
 
 # Create cashier user
+# Uses CASHIER_EMAIL environment variable or falls back to default
 IO.puts("\nCreating cashier user...")
 
 {:ok, cashier} =
   Accounts.register_user(%{
-    email: System.get_env("CASHIER_EMAIL", "rosslann.ramli@gmail.com"),
+    email:
+      System.get_env("CASHIER_EMAIL") || raise("CASHIER_EMAIL environment variable is required"),
     is_admin: false,
     is_vendor: false,
     is_cashier: true
@@ -54,11 +57,14 @@ IO.puts("\nCreating cashier user...")
 IO.puts("✅ Created cashier user: #{cashier.email}")
 
 # Create drinks vendor
+# Uses DRINKS_VENDOR_EMAIL environment variable or falls back to default
 IO.puts("\nCreating drinks vendor...")
 
 {:ok, drinks_vendor_user} =
   Accounts.register_user(%{
-    email: System.get_env("DRINKS_VENDOR_EMAIL", "roslanr@gmail.com"),
+    email:
+      System.get_env("DRINKS_VENDOR_EMAIL") ||
+        raise("DRINKS_VENDOR_EMAIL environment variable is required"),
     is_admin: false,
     is_vendor: true,
     is_cashier: false
@@ -147,11 +153,14 @@ for item <- drinks_menu do
 end
 
 # Create food vendor
+# Uses FOOD_VENDOR_EMAIL environment variable or falls back to default
 IO.puts("\nCreating food vendor...")
 
 {:ok, food_vendor_user} =
   Accounts.register_user(%{
-    email: System.get_env("FOOD_VENDOR_EMAIL", "dev.rroslan@gmail.com"),
+    email:
+      System.get_env("FOOD_VENDOR_EMAIL") ||
+        raise("FOOD_VENDOR_EMAIL environment variable is required"),
     is_admin: false,
     is_vendor: true,
     is_cashier: false
@@ -319,6 +328,8 @@ IO.puts("\n" <> String.duplicate("=", 60))
 IO.puts("✅ SEED DATA CREATED SUCCESSFULLY!")
 IO.puts(String.duplicate("=", 60))
 IO.puts("\nYou can now log in with:")
+IO.puts("\n🔧 Note: Email addresses can be customized via environment variables:")
+IO.puts("   ADMIN_EMAIL, CASHIER_EMAIL, DRINKS_VENDOR_EMAIL, FOOD_VENDOR_EMAIL")
 IO.puts("\n📧 Admin:")
 IO.puts("   Email: #{admin.email}")
 IO.puts("\n📧 Cashier:")
