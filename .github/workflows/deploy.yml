@@ -1,0 +1,140 @@
+# .github/workflows/deploy.yml
+name: Deploy to VPS on Main Push
+
+# Required GitHub Secrets:
+# - VPS_HOST: Hostname/IP of your VPS server
+# - VPS_SSH_USER: SSH username for VPS access
+# - VPS_SSH_PRIVATE_KEY: SSH private key (RAW content, NOT base64) used for SSH connection
+# - VPS_DEPLOY_PATH: Absolute path to the root of your checked-out git repository on the VPS (e.g., /home/ubuntu/river_side_phx)
+# - VPS_GIT_BRANCH: The branch to pull on the VPS (usually 'main')
+# - VPS_SERVICE_NAME: The name of the systemd service for your app (e.g., river_side.service)
+# - DATABASE_URL: PostgreSQL connection string (e.g., ecto://postgres:password@localhost/river_side)
+# - SECRET_KEY_BASE: Phoenix secret key base
+# - PHX_HOST: Production hostname (e.g., riverside.applikasi.tech)
+# - RESEND_API_KEY: API key for Resend email service
+# - ADMIN_EMAIL: Email address for admin user
+# - CASHIER_EMAIL: Email address for cashier user
+# - DRINKS_VENDOR_EMAIL: Email address for drinks vendor user
+# - FOOD_VENDOR_EMAIL: Email address for food vendor user
+
+# Important VPS Prerequisites:
+# 1. Git must be installed on the VPS.
+# 2. The repository must be cloned in VPS_DEPLOY_PATH.
+# 3. The VPS must have network access to clone/pull from GitHub (e.g., SSH key configured if private repo).
+# 4. Elixir, Erlang (installed via kerl/manual methods), Node.js (if needed), and build tools (like make, gcc) must be installed on the VPS.
+# 5. The PATH for the VPS_SSH_USER must be configured correctly (e.g., in ~/.bashrc or ~/.profile) to find the installed Erlang/Elixir executables (erl, mix, elixir).
+# 6. Runtime secrets (DATABASE_URL, SECRET_KEY_BASE, etc.) must be configured on the VPS environment where the build/run occurs (e.g., in the systemd service file or environment files).
+# 7. The VPS_SSH_USER must have passwordless sudo privileges specifically for the systemctl command to restart the service (e.g., configure via /etc/sudoers.d/).
+
+on:
+  push:
+    branches: [main] # Trigger workflow on push to the main branch
+
+jobs:
+  deploy_to_vps:
+    name: Pull, Build, Migrate & Restart on VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate Secrets Presence
+        run: |
+          echo "Checking required secrets..."
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Error: VPS_HOST secret missing"; exit 1; fi
+          if [ -z "${{ secrets.VPS_SSH_USER }}" ]; then echo "Error: VPS_SSH_USER secret missing"; exit 1; fi
+          if [ -z "${{ secrets.VPS_SSH_PRIVATE_KEY }}" ]; then echo "Error: VPS_SSH_PRIVATE_KEY secret missing"; exit 1; fi
+          if [ -z "${{ secrets.VPS_DEPLOY_PATH }}" ]; then echo "Error: VPS_DEPLOY_PATH secret missing"; exit 1; fi
+          if [ -z "${{ secrets.VPS_SERVICE_NAME }}" ]; then echo "Error: VPS_SERVICE_NAME secret missing"; exit 1; fi
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then echo "Error: DATABASE_URL secret missing"; exit 1; fi
+          if [ -z "${{ secrets.SECRET_KEY_BASE }}" ]; then echo "Error: SECRET_KEY_BASE secret missing"; exit 1; fi
+          if [ -z "${{ secrets.PHX_HOST }}" ]; then echo "Error: PHX_HOST secret missing"; exit 1; fi
+          if [ -z "${{ secrets.RESEND_API_KEY }}" ]; then echo "Error: RESEND_API_KEY secret missing"; exit 1; fi
+          # Optional seed email secrets - will use defaults if not set
+          if [ -z "${{ secrets.ADMIN_EMAIL }}" ]; then echo "Warning: ADMIN_EMAIL secret not set, will use default"; fi
+          if [ -z "${{ secrets.CASHIER_EMAIL }}" ]; then echo "Warning: CASHIER_EMAIL secret not set, will use default"; fi
+          if [ -z "${{ secrets.DRINKS_VENDOR_EMAIL }}" ]; then echo "Warning: DRINKS_VENDOR_EMAIL secret not set, will use default"; fi
+          if [ -z "${{ secrets.FOOD_VENDOR_EMAIL }}" ]; then echo "Warning: FOOD_VENDOR_EMAIL secret not set, will use default"; fi
+          echo "Required deployment secrets seem present."
+
+      - name: Connect, Pull, Build, Migrate, Restart -- VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }} # IMPORTANT: Use the RAW private key content
+          # port: ${{ secrets.SSH_PORT || 22 }} # Uncomment if needed
+          script: |
+            set -e # Exit immediately if a command exits with a non-zero status.
+
+            # Ensure these paths match your actual installation on the VPS!
+            export PATH="$HOME/.elixir-install/installs/otp/27.2.3/bin:$PATH"
+            export PATH="$HOME/.elixir-install/installs/elixir/1.18.3-otp-27/bin:$PATH"
+
+            # Export environment variables for the build process
+            export MIX_ENV=prod
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export SECRET_KEY_BASE="${{ secrets.SECRET_KEY_BASE }}"
+            export PHX_HOST="${{ secrets.PHX_HOST }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export UPLOADS_DIR="/home/ubuntu/river_side_phx/priv/static/uploads"
+            # Export seed emails only if they're set
+            [ ! -z "${{ secrets.ADMIN_EMAIL }}" ] && export ADMIN_EMAIL="${{ secrets.ADMIN_EMAIL }}"
+            [ ! -z "${{ secrets.CASHIER_EMAIL }}" ] && export CASHIER_EMAIL="${{ secrets.CASHIER_EMAIL }}"
+            [ ! -z "${{ secrets.DRINKS_VENDOR_EMAIL }}" ] && export DRINKS_VENDOR_EMAIL="${{ secrets.DRINKS_VENDOR_EMAIL }}"
+            [ ! -z "${{ secrets.FOOD_VENDOR_EMAIL }}" ] && export FOOD_VENDOR_EMAIL="${{ secrets.FOOD_VENDOR_EMAIL }}"
+
+            # Deployment configuration
+            DEPLOY_PATH="${{ secrets.VPS_DEPLOY_PATH }}"
+            GIT_BRANCH="${{ secrets.VPS_GIT_BRANCH || 'main' }}"
+            SERVICE_NAME="${{ secrets.VPS_SERVICE_NAME }}"
+
+            echo "--- Starting VPS Deployment for RiverSide ---"
+            echo "Navigating to deployment directory: $DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+
+            echo "Ensuring correct branch ($GIT_BRANCH) is checked out..."
+            git checkout "$GIT_BRANCH"
+
+            echo "Stashing potential local changes..."
+            git stash push -m "Stashed by GitHub Actions before pull $(date)" || echo "No changes to stash"
+
+            echo "Pulling latest changes from origin/$GIT_BRANCH..."
+            git pull origin "$GIT_BRANCH"
+
+            echo "--- Building Application (MIX_ENV=$MIX_ENV) ---"
+
+            echo "Fetching/updating dependencies..."
+            mix deps.get --only prod
+
+            echo "Cleaning build artifacts..."
+            mix clean
+
+            echo "Compiling application..."
+            mix compile
+
+            echo "Compiling assets..."
+            mix assets.deploy
+
+            echo "Building release..."
+            mix release --overwrite
+
+            echo "--- Ensuring uploads directory exists ---"
+            mkdir -p priv/static/uploads
+
+            echo "--- Running Database Migrations ---"
+            # Run migrations using the release binary
+            _build/prod/rel/river_side/bin/river_side eval "
+              Application.load(:river_side)
+              Application.ensure_all_started(:river_side)
+              path = Application.app_dir(:river_side, \"priv/repo/migrations\")
+              Ecto.Migrator.run(RiverSide.Repo, path, :up, all: true)
+            "
+
+            echo "--- Restarting Application Service ($SERVICE_NAME) ---"
+            # Ensure VPS_SSH_USER has passwordless sudo rights for this command
+            sudo systemctl restart "$SERVICE_NAME"
+
+            echo "Checking service status..."
+            sudo systemctl status "$SERVICE_NAME" --no-pager || true
+
+            echo "--- Deployment Finished Successfully ---"
+            echo "RiverSide is now accessible at https://$PHX_HOST"
