@@ -292,58 +292,33 @@ defmodule RiverSide.Vendors do
   Creates an order.
   """
   def create_order(attrs \\ %{}) do
-    Repo.transaction(fn ->
-      # Extract order items from attrs
-      {order_items_attrs, order_attrs} = Map.pop(attrs, :order_items, [])
+    result =
+      Repo.transaction(fn ->
+        {order_items_attrs, order_attrs} = Map.pop(attrs, :order_items, [])
+        {:ok, order} = %Order{} |> Order.create_changeset(order_attrs) |> Repo.insert()
 
-      # Create the order first
-      case %Order{}
-           |> Order.create_changeset(order_attrs)
-           |> Repo.insert() do
-        {:ok, order} ->
-          # Calculate total from order items
-          total =
-            Enum.reduce(order_items_attrs, Decimal.new("0"), fn item_attrs, acc ->
-              menu_item = get_menu_item!(item_attrs.menu_item_id)
+        total =
+          Enum.reduce(order_items_attrs, Decimal.new("0"), fn item_attrs, acc ->
+            menu_item = get_menu_item!(item_attrs.menu_item_id)
+            item_attrs = Map.merge(item_attrs, %{order_id: order.id, price: menu_item.price})
+            {:ok, order_item} = create_order_item(item_attrs, menu_item)
+            Decimal.add(acc, order_item.subtotal)
+          end)
 
-              item_attrs =
-                Map.merge(item_attrs, %{
-                  order_id: order.id,
-                  price: menu_item.price
-                })
+        {:ok, updated_order} = update_order_total(order, %{total_amount: total})
+        # return updated_order (do not broadcast yet)
+        updated_order
+      end)
 
-              case create_order_item(item_attrs, menu_item) do
-                {:ok, order_item} ->
-                  Decimal.add(acc, order_item.subtotal)
+    # Now the transaction is committed, so broadcast the update
+    case result do
+      {:ok, full_order} ->
+        broadcast_order_update({:ok, get_order!(full_order.id)})
+        {:ok, full_order}
 
-                {:error, changeset} ->
-                  Repo.rollback(changeset)
-              end
-            end)
-
-          # Update order with total
-          case update_order_total(order, %{total_amount: total}) do
-            {:ok, updated_order} ->
-              # Broadcast the new order
-              full_order = get_order!(updated_order.id)
-
-              require Logger
-
-              Logger.info(
-                "Order created successfully - ID: #{full_order.id}, broadcasting updates..."
-              )
-
-              broadcast_order_update({:ok, full_order})
-              full_order
-
-            {:error, changeset} ->
-              Repo.rollback(changeset)
-          end
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
-      end
-    end)
+      error ->
+        error
+    end
   end
 
   @doc """

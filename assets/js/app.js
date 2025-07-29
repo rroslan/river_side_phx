@@ -131,11 +131,70 @@ const Hooks = {
   NotificationSound: {
     mounted() {
       console.log("NotificationSound hook mounted");
-
-      // Create audio element for notification sound - pleasant ping/chime
-      this.audio = new Audio(
-        "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAJAAAJcABCQkJCQkJCQkJCXl5eXl5eXl5eXnp6enp6enp6enqVlZWVlZWVlZWVsbGxsbGxsbGxsc3Nzc3Nzc3Nzc3p6enp6enp6enp//////////////////8AAAA5TEFNRTMuOThyAaUAAAAALCQAABRGJAILQgAARgAACXC8w0MJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAAOUx1TOa2YgDAAADSAAAAEYFQAfQJfj/AgCAIAgGHluTkxAAQ/KBjwQMH/6BVVVVW//VVVd6oFVVWBVVf/qq3qgVVVYFX//6qr1QAAoGAgGP//h/4IIECAR/BA8H//4nE5xPEZxOcRAoFEwGA4HA/ygKIxGYJ+4n0+JnA++f+b5jHz//4mATUDn+OD35fm+Y38////kAOFBAEQhjLLdYSi1YGAGAL1tKcUL/gNhwRcAAAvgAGV8pUdZgCYHGCBgCZAmH5gMwD3fRNT9/Sf/85DE3ZNGNOQBLdgAxETjAcwMMDTAcwXJQJTfNIjOqDF8i5HN80uv/wQBAAAECREBJjRVN5HNY3nM7jOpDOczJ4zqA0fMySNGH/vQBAAAIICBFJGBZiQgAD2K+pKP////5N/mxuJyMb9iTnxyJHnZJNJCCgUGBQCjhCkFEOQkYY4rQ//qHdnGBgCAJoQoJgwdQ4GhQAJigz////OQBOGEAG2tEJCkqoYh/qDHQ5iKKPElBpHJHJTjGQcCOdqkB5i4OUYFBgRgA4IahfnHBRg//+QxN2WAHTcATqYAR5NwFpzH3w/yPyOpMOpL8n/JZOOf6wEQoOAQgJ7g8Mf/f4P+c3//8n//xP/CgkD8z7/3//8kCMAAQhBNJJHmJxEQPCgbZGxLEtZHHH///5DxJJzJJJJOJJJJGT/w4kJEAcOHyJJEgAAAqSoqkrROJETjQGcnGzYl/kzGYzGYy/jIrTKgKbdhjm3zJ//////85DE9IsNHNQBP0gBnJ/+P//+ZAAAD0uTJHOdHJkcjJJN5yT/8H/JP///4cSUkkkkkkk4k/8TiQABEQ4HBQCAAADSQaQaGRGJP/9Cov///5DVxrGsb//////Ef/84ASiWNRjGP//GRGJsSST/w4zGNCMVjGRkYmSGJDjG6wOJHJA0f///+HEgaNxEzMyMyYxIsC0bkR8Q0aFhSYBo2P/zkMTKiZjsygE/kACJkUNBiJn///4o8QCQSSTvGNxiZGQkmJkSSRxJI8Y0OJBmMZGJEQkAOdGSZDGcJ+JP/w4k/wfySokkOJ/w5JJLEggkj//k///5P/8D+TiT2BJNAkp4n//kwkckiSSRJMJP/w4ckSTjyQJJJJkkEkjwJJJOJJJI//4gkSST//9IEgyJIkjNgVv+aFNJIkD///+QxN6L5OzGCT+YALLJNHFH////////////HP/TUTQz+JJBpJJJJJJJJJzJJJUJJJDjQJpKJNJEowKP/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////85DFAQkQvJQBP5gAAAADSAAAAEpJJJiJJJJJJJJJOJJJJLBpBJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJIQU=",
+      console.log("NotificationSound: Current page:", window.location.pathname);
+      console.log(
+        "NotificationSound: LiveSocket connected:",
+        window.liveSocket?.isConnected(),
       );
+
+      // Create a function to play notification sound using Web Audio API
+      this.playSound = () => {
+        try {
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+
+          // Create oscillator for the main tone
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          // Pleasant notification sound - two quick beeps
+          oscillator.frequency.value = 880; // A5 note
+          gainNode.gain.value = 0.3;
+
+          // Fade in
+          gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+          gainNode.gain.linearRampToValueAtTime(
+            0.3,
+            audioContext.currentTime + 0.01,
+          );
+
+          // First beep
+          gainNode.gain.linearRampToValueAtTime(
+            0.3,
+            audioContext.currentTime + 0.1,
+          );
+          gainNode.gain.linearRampToValueAtTime(
+            0,
+            audioContext.currentTime + 0.15,
+          );
+
+          // Second beep
+          gainNode.gain.linearRampToValueAtTime(
+            0.3,
+            audioContext.currentTime + 0.2,
+          );
+          gainNode.gain.linearRampToValueAtTime(
+            0,
+            audioContext.currentTime + 0.3,
+          );
+
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.35);
+
+          return Promise.resolve();
+        } catch (error) {
+          console.error(
+            "NotificationSound: Error creating Web Audio sound:",
+            error,
+          );
+          return Promise.reject(error);
+        }
+      };
+
+      console.log("NotificationSound: Web Audio API sound function created");
 
       // Track if sound is enabled - default to true
       this.soundEnabled = true;
@@ -144,20 +203,18 @@ const Hooks = {
       this.enableSound = () => {
         console.log("Enabling sound notifications");
         this.soundEnabled = true;
-        // Try to play a silent sound to unlock audio
-        this.audio.volume = 0;
-        this.audio
-          .play()
-          .then(() => {
-            this.audio.volume = 1;
-            this.audio.pause();
-            this.audio.currentTime = 0;
-            console.log("Audio context unlocked successfully");
-          })
-          .catch((error) => {
-            console.error("Failed to unlock audio context:", error);
-            // Will retry on next user interaction
-          });
+        // Try to create audio context to unlock it
+        try {
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          if (audioContext.state === "suspended") {
+            audioContext.resume().then(() => {
+              console.log("Audio context unlocked successfully");
+            });
+          }
+        } catch (error) {
+          console.error("Failed to unlock audio context:", error);
+        }
       };
 
       // Try to enable sound immediately
@@ -168,46 +225,57 @@ const Hooks = {
       document.addEventListener("keydown", this.enableSound, { once: true });
 
       // Handle the custom event from LiveView
-      this.handleEvent("play-notification-sound", () => {
-        console.log("Received play-notification-sound event");
+      this.handleEvent("play-notification-sound", (payload) => {
+        console.log(
+          "NotificationSound: Received play-notification-sound event",
+          payload,
+        );
+        console.log("NotificationSound: Sound enabled?", this.soundEnabled);
+        console.log("NotificationSound: Audio element exists?", !!this.audio);
+        console.log(
+          "NotificationSound: Audio source:",
+          this.audio?.src?.substring(0, 50) + "...",
+        );
 
         // Play the notification sound
-        this.audio
-          .play()
-          .then(() => {
-            console.log("Notification sound played successfully");
-          })
-          .catch((error) => {
-            console.error("Failed to play notification sound:", error);
-            // Browser might require user interaction first
-            if (error.name === "NotAllowedError") {
-              console.log(
-                "Browser requires user interaction for sound. Will play on next interaction.",
-              );
-              this.soundEnabled = false;
-            }
-          });
+        if (this.soundEnabled) {
+          this.playSound()
+            .then(() => {
+              console.log("NotificationSound: Sound played successfully!");
+            })
+            .catch((error) => {
+              console.error("NotificationSound: Failed to play sound:", error);
+              console.error("NotificationSound: Error name:", error.name);
+              console.error("NotificationSound: Error message:", error.message);
+              // Browser might require user interaction first
+              if (error.name === "NotAllowedError") {
+                console.log(
+                  "NotificationSound: Browser requires user interaction for sound. Will play on next interaction.",
+                );
+                this.soundEnabled = false;
+              }
+            });
+        }
       });
 
       // Handle enable sound event
-      this.handleEvent("enable-sound", () => {
-        console.log("Received enable-sound event from server");
+      this.handleEvent("enable-sound", (payload) => {
+        console.log(
+          "NotificationSound: Received enable-sound event from server",
+          payload,
+        );
         // Enable sound through user interaction
         this.enableSound();
         // Play a test sound to confirm it's working
-        this.audio.volume = 0.3;
-        this.audio
-          .play()
+        this.playSound()
           .then(() => {
-            console.log("Test sound played successfully");
-            setTimeout(() => {
-              this.audio.pause();
-              this.audio.currentTime = 0;
-              this.audio.volume = 1;
-            }, 500);
+            console.log("NotificationSound: Test sound played successfully");
           })
           .catch((error) => {
-            console.error("Failed to play test sound:", error);
+            console.error(
+              "NotificationSound: Failed to play test sound:",
+              error,
+            );
           });
       });
     },
