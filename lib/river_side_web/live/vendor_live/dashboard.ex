@@ -141,12 +141,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
             </ul>
           </div>
         </div>
-        <!-- Sound Enable Button (for browser autoplay policy) -->
-        <button
-          class="btn btn-circle btn-sm btn-ghost"
-          phx-click="enable_sound"
-          title="Enable notification sounds"
-        >
+        <!-- Refresh Button -->
+        <button class="btn btn-circle btn-sm btn-ghost" phx-click="refresh" title="Refresh orders">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -158,10 +154,56 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
             />
           </svg>
         </button>
+        <!-- Sound Enable Button (for browser autoplay policy) -->
+        <div
+          class="tooltip tooltip-bottom"
+          data-tip={
+            if @sound_enabled,
+              do: "Notification sound enabled",
+              else: "Click to enable notification sound"
+          }
+        >
+          <button
+            class={"btn btn-circle btn-sm #{if @sound_enabled, do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="toggle_sound"
+          >
+            <%= if @sound_enabled do %>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+                />
+              </svg>
+            <% else %>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.531V19.94a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.506-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.757 3.63 8.25 4.51 8.25H6.75z"
+                />
+              </svg>
+            <% end %>
+          </button>
+        </div>
       </div>
       ```
       <%= if @vendor do %>
@@ -813,7 +855,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
        |> assign(completed_orders: completed_orders)
        |> assign(sales_stats: sales_stats)
        |> assign(active_tab: "orders")
-       |> assign(last_update: DateTime.utc_now())}
+       |> assign(last_update: DateTime.utc_now())
+       |> assign(sound_enabled: true)}
     else
       # Create a default vendor profile
       case Vendors.create_vendor(%{
@@ -838,7 +881,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                top_items: []
              }
            )
-           |> assign(active_tab: "orders")}
+           |> assign(active_tab: "orders")
+           |> assign(sound_enabled: true)}
 
         {:error, _} ->
           {:ok,
@@ -854,7 +898,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                top_items: []
              }
            )
-           |> assign(active_tab: "orders")}
+           |> assign(active_tab: "orders")
+           |> assign(sound_enabled: true)}
       end
     end
   end
@@ -938,8 +983,42 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   end
 
   @impl true
-  def handle_event("enable_sound", _params, socket) do
-    {:noreply, push_event(socket, "enable-sound", %{})}
+  def handle_event("toggle_sound", _params, socket) do
+    new_state = !socket.assigns.sound_enabled
+
+    socket = assign(socket, sound_enabled: new_state)
+
+    socket =
+      if new_state do
+        socket
+        |> push_event("enable-sound", %{})
+        |> put_flash(:info, "Notification sound enabled")
+      else
+        socket
+        |> put_flash(:info, "Notification sound disabled")
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("refresh", _params, socket) do
+    # Reload all data
+    vendor = socket.assigns.vendor
+    active_orders = Vendors.list_active_orders(vendor.id)
+
+    completed_orders =
+      Vendors.list_todays_orders(vendor.id) |> Enum.filter(&(&1.status == "completed"))
+
+    sales_stats = Vendors.get_vendor_sales_stats(vendor.id)
+
+    {:noreply,
+     socket
+     |> assign(active_orders: active_orders)
+     |> assign(completed_orders: completed_orders)
+     |> assign(sales_stats: sales_stats)
+     |> assign(last_update: DateTime.utc_now())
+     |> put_flash(:info, "Orders refreshed")}
   end
 
   @impl true

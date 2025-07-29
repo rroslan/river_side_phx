@@ -137,29 +137,31 @@ const Hooks = {
         "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAJAAAJcABCQkJCQkJCQkJCXl5eXl5eXl5eXnp6enp6enp6enqVlZWVlZWVlZWVsbGxsbGxsbGxsc3Nzc3Nzc3Nzc3p6enp6enp6enp//////////////////8AAAA5TEFNRTMuOThyAaUAAAAALCQAABRGJAILQgAARgAACXC8w0MJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAAOUx1TOa2YgDAAADSAAAAEYFQAfQJfj/AgCAIAgGHluTkxAAQ/KBjwQMH/6BVVVVW//VVVd6oFVVWBVVf/qq3qgVVVYFX//6qr1QAAoGAgGP//h/4IIECAR/BA8H//4nE5xPEZxOcRAoFEwGA4HA/ygKIxGYJ+4n0+JnA++f+b5jHz//4mATUDn+OD35fm+Y38////kAOFBAEQhjLLdYSi1YGAGAL1tKcUL/gNhwRcAAAvgAGV8pUdZgCYHGCBgCZAmH5gMwD3fRNT9/Sf/85DE3ZNGNOQBLdgAxETjAcwMMDTAcwXJQJTfNIjOqDF8i5HN80uv/wQBAAAECREBJjRVN5HNY3nM7jOpDOczJ4zqA0fMySNGH/vQBAAAIICBFJGBZiQgAD2K+pKP////5N/mxuJyMb9iTnxyJHnZJNJCCgUGBQCjhCkFEOQkYY4rQ//qHdnGBgCAJoQoJgwdQ4GhQAJigz////OQBOGEAG2tEJCkqoYh/qDHQ5iKKPElBpHJHJTjGQcCOdqkB5i4OUYFBgRgA4IahfnHBRg//+QxN2WAHTcATqYAR5NwFpzH3w/yPyOpMOpL8n/JZOOf6wEQoOAQgJ7g8Mf/f4P+c3//8n//xP/CgkD8z7/3//8kCMAAQhBNJJHmJxEQPCgbZGxLEtZHHH///5DxJJzJJJJOJJJJGT/w4kJEAcOHyJJEgAAAqSoqkrROJETjQGcnGzYl/kzGYzGYy/jIrTKgKbdhjm3zJ//////85DE9IsNHNQBP0gBnJ/+P//+ZAAAD0uTJHOdHJkcjJJN5yT/8H/JP///4cSUkkkkkkk4k/8TiQABEQ4HBQCAAADSQaQaGRGJP/9Cov///5DVxrGsb//////Ef/84ASiWNRjGP//GRGJsSST/w4zGNCMVjGRkYmSGJDjG6wOJHJA0f///+HEgaNxEzMyMyYxIsC0bkR8Q0aFhSYBo2P/zkMTKiZjsygE/kACJkUNBiJn///4o8QCQSSTvGNxiZGQkmJkSSRxJI8Y0OJBmMZGJEQkAOdGSZDGcJ+JP/w4k/wfySokkOJ/w5JJLEggkj//k///5P/8D+TiT2BJNAkp4n//kwkckiSSRJMJP/w4ckSTjyQJJJJkkEkjwJJJOJJJI//4gkSST//9IEgyJIkjNgVv+aFNJIkD///+QxN6L5OzGCT+YALLJNHFH////////////HP/TUTQz+JJBpJJJJJJJJJzJJJUJJJDjQJpKJNJEowKP/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////85DFAQkQvJQBP5gAAAADSAAAAEpJJJiJJJJJJJJJOJJJJLBpBJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJIQU=",
       );
 
-      // Track if sound is enabled
-      this.soundEnabled = false;
+      // Track if sound is enabled - default to true
+      this.soundEnabled = true;
 
-      // Enable sound on first user interaction
+      // Enable sound and unlock audio context
       this.enableSound = () => {
-        if (!this.soundEnabled) {
-          this.soundEnabled = true;
-          console.log("Sound notifications enabled");
-          // Try to play a silent sound to unlock audio
-          this.audio.volume = 0;
-          this.audio
-            .play()
-            .then(() => {
-              this.audio.volume = 1;
-              this.audio.pause();
-              this.audio.currentTime = 0;
-              console.log("Audio context unlocked successfully");
-            })
-            .catch((error) => {
-              console.error("Failed to unlock audio context:", error);
-            });
-        }
+        console.log("Enabling sound notifications");
+        this.soundEnabled = true;
+        // Try to play a silent sound to unlock audio
+        this.audio.volume = 0;
+        this.audio
+          .play()
+          .then(() => {
+            this.audio.volume = 1;
+            this.audio.pause();
+            this.audio.currentTime = 0;
+            console.log("Audio context unlocked successfully");
+          })
+          .catch((error) => {
+            console.error("Failed to unlock audio context:", error);
+            // Will retry on next user interaction
+          });
       };
+
+      // Try to enable sound immediately
+      this.enableSound();
 
       // Add click listener to enable sound
       document.addEventListener("click", this.enableSound, { once: true });
@@ -169,11 +171,6 @@ const Hooks = {
       this.handleEvent("play-notification-sound", () => {
         console.log("Received play-notification-sound event");
 
-        if (!this.soundEnabled) {
-          console.log("Sound not yet enabled - waiting for user interaction");
-          return;
-        }
-
         // Play the notification sound
         this.audio
           .play()
@@ -182,23 +179,32 @@ const Hooks = {
           })
           .catch((error) => {
             console.error("Failed to play notification sound:", error);
+            // Browser might require user interaction first
+            if (error.name === "NotAllowedError") {
+              console.log(
+                "Browser requires user interaction for sound. Will play on next interaction.",
+              );
+              this.soundEnabled = false;
+            }
           });
       });
 
       // Handle enable sound event
       this.handleEvent("enable-sound", () => {
-        console.log("Received enable-sound event");
+        console.log("Received enable-sound event from server");
         // Enable sound through user interaction
         this.enableSound();
         // Play a test sound to confirm it's working
-        this.audio.volume = 0.5;
+        this.audio.volume = 0.3;
         this.audio
           .play()
           .then(() => {
             console.log("Test sound played successfully");
-            this.audio.pause();
-            this.audio.currentTime = 0;
-            this.audio.volume = 1;
+            setTimeout(() => {
+              this.audio.pause();
+              this.audio.currentTime = 0;
+              this.audio.volume = 1;
+            }, 500);
           })
           .catch((error) => {
             console.error("Failed to play test sound:", error);
