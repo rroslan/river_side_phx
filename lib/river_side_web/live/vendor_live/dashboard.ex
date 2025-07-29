@@ -250,8 +250,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     <!-- Vendor Profile Card -->
           <div class="card bg-base-100 shadow-xl mb-6">
             <div class="card-body">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                   <%= if @vendor.logo_url do %>
                     <img
                       src={@vendor.logo_url}
@@ -276,8 +276,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                       </svg>
                     </div>
                   <% end %>
-                  <div>
-                    <h2 class="text-2xl font-bold">{@vendor.name}</h2>
+                  <div class="flex-1">
+                    <h2 class="text-xl sm:text-2xl font-bold">{@vendor.name}</h2>
                     <%= if @vendor.description do %>
                       <p class="text-base-content/70">{@vendor.description}</p>
                     <% else %>
@@ -292,7 +292,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                     </div>
                   </div>
                 </div>
-                <button class="btn btn-primary" phx-click="edit_profile">
+                <button
+                  class="btn btn-primary btn-sm sm:btn-md self-end sm:self-auto"
+                  phx-click="edit_profile"
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -312,7 +315,7 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
                       d="M19.5 7.125M18 13.875v4.5a1.875 1.875 0 0 1-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V8.625a1.875 1.875 0 0 1 1.875-1.875h4.5"
                     />
                   </svg>
-                  Edit Profile
+                  <span class="hidden sm:inline">Edit Profile</span>
                 </button>
               </div>
 
