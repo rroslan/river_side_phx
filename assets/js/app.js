@@ -59,20 +59,89 @@ const csrfToken = document
 const Hooks = {
   ...colocatedHooks,
   ImageCropper: ImageCropper,
+  VendorDashboard: {
+    mounted() {
+      console.log("VendorDashboard hook mounted");
+
+      // Listen for debug updates
+      this.handleEvent("debug-update", (data) => {
+        console.log("VendorDashboard: Received real-time update!", data);
+        console.log(`  - Order count: ${data.order_count}`);
+        console.log(`  - Timestamp: ${data.timestamp}`);
+        console.log(`  - This proves real-time updates are working!`);
+
+        // Force a visual indicator that update was received
+        const dashboard = document.getElementById("vendor-dashboard");
+        if (dashboard) {
+          // Flash green border to show update received
+          dashboard.style.borderTop = "5px solid #00ff00";
+          dashboard.style.transition = "border-top 0.3s ease";
+          setTimeout(() => {
+            dashboard.style.borderTop = "5px solid #ff9900";
+            setTimeout(() => {
+              dashboard.style.borderTop = "";
+            }, 300);
+          }, 300);
+        }
+
+        // Also update the debug info if visible
+        const debugInfo = document.querySelector(".fixed.bottom-4.right-4");
+        if (debugInfo) {
+          debugInfo.style.backgroundColor = "#00ff00";
+          setTimeout(() => {
+            debugInfo.style.backgroundColor = "";
+          }, 500);
+        }
+      });
+
+      // Monitor WebSocket connection
+      this.checkConnection = setInterval(() => {
+        // Check actual LiveSocket connection status instead of data attribute
+        const connected = window.liveSocket && window.liveSocket.isConnected();
+        console.log(`VendorDashboard: WebSocket connected: ${connected}`);
+
+        // Only log additional details if connected
+        if (connected) {
+          console.log(
+            "VendorDashboard: LiveView is connected and ready for updates",
+          );
+        }
+      }, 5000);
+
+      // Log initial connection state
+      console.log(
+        "VendorDashboard: Initial connection state:",
+        window.liveSocket?.isConnected() || false,
+      );
+
+      // Listen for Phoenix channel events to debug
+      this.channel = window.liveSocket?.channel;
+      if (this.channel) {
+        console.log("VendorDashboard: Phoenix channel available");
+      }
+    },
+
+    destroyed() {
+      console.log("VendorDashboard hook destroyed");
+      if (this.checkConnection) {
+        clearInterval(this.checkConnection);
+      }
+    },
+  },
   NotificationSound: {
     mounted() {
       console.log("NotificationSound hook mounted");
 
-      // Create audio element for notification sound
+      // Create audio element for notification sound - pleasant ping/chime
       this.audio = new Audio(
-        "data:audio/wav;base64,UklGRjIGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4GAAC8/5v/nv+h/6T/qP+r/6//sv+2/7n/vP/A/8P/x//K/87/0f/V/9j/3P/f/+P/5v/q/+3/8f/0//j/+//+/wIABgAJAA0AEAAUABcAGwAeACIAJQApACwAMAA0ADcAOwA+AEIARQBJAEwAUABTAFcAWgBeAGEAZQBoAGwAbwBzAHYAegB9AIEAhACIAIsAjwCSAJYAmQCdAKAApACoAKsArwCyALYAuQC9AMAAxADHAMsAzgDSANUA2QDdAOAA5ADnAOsA7gDyAPUA+QD8AP8AAwEHAQoBDgERARUBGAEcAR8BIwEmASoBLQExATQBOAE7AT8BQgFGAUkBTQFQAVQBVwFbAV4BYgFlAWkBbAFwAXMBdwF6AX4BgQGFAYgBjAGPAZMBlgGaAZ0BoQGkAagBqwGvAbIBtgG5Ab0BwAHEAckBzAHQAdMB1wHaAd4B4QHlAegB7AHwAfMB9wH6Af4BAQIFAggCDAIPAhMCFgIaAh4CIQIlAigCLAIvAjMCNgI6Aj0CQQJEAkgCSwJPAlICVgJZAl0CYAJkAmcCawJvAnICdgJ5An0CgAKEAocCiwKOApIClQKZAp0CoAKkAqcCqwKuArICwQLFAsgCzALPAtMC1gLaAt0C4QLkAugC6wLvAvIC9gL5Av0CAAMEAwcDCwMOAxIDFQMZAxwDIAMjAycDKgMuAzEDNQM4AzwDPwNDA0YDSgNNA1EDVANXA1sDXgNiA2UDaQNsA3ADcwN3A3oDfgOBA4UDiAOMA48DkwOWA5oDnQOhA6QDqAOrA68DsgO2A7kDvAPAA8MDxwPKA84D0QPVA9gD3APfA+MD5gPqA+0D8QPyAPYD+gP9AwEEBQQIBAwEDwQTBBYEGgQdBCEEJAQoBCsELwQyBDYEOQQ9BEAERAHDAMcEygDOBNEE1QTYBNwE3wTjBOYE6gTtBPEE9AT4BPsE/wQCBQYFCQUNBRAFFAUXBRsFHgUiBSUFKQUsBS8FMwU2BToFPQVBBUQFSAVLBU8FUgVWBVkFXQVgBWQFZwVrBW4FcgV1BXkFfAWABYMFhwWKBY4FkQWVBZgFnAWfBaMFpgWqBa0FsQW0BbgFuwW/BcIFxgXJBc0F0AXUBdcF2gXeBOEF5QXoBewF7wXzBfYF+gX9BQEGBAYIBgsGDwYSBhYGGQYdBiAGJAYnBisGLgYyBjUGOAY8Bj8GQwZGBkoGTQZRBlQGWAZbBl8GYgZlBmkGbAZwBnMGdwZ6Bn4GgQaFBogGjAaPBpMGlgaaBp0GoQakBqgGqwaoBq8GlgawBrUGuQa8BsAGwwbGBsAGqAawBpYGlgaoBsAGxgbABqgGlgY=",
+        "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAJAAAJcABCQkJCQkJCQkJCXl5eXl5eXl5eXnp6enp6enp6enqVlZWVlZWVlZWVsbGxsbGxsbGxsc3Nzc3Nzc3Nzc3p6enp6enp6enp//////////////////8AAAA5TEFNRTMuOThyAaUAAAAALCQAABRGJAILQgAARgAACXC8w0MJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAAOUx1TOa2YgDAAADSAAAAEYFQAfQJfj/AgCAIAgGHluTkxAAQ/KBjwQMH/6BVVVVW//VVVd6oFVVWBVVf/qq3qgVVVYFX//6qr1QAAoGAgGP//h/4IIECAR/BA8H//4nE5xPEZxOcRAoFEwGA4HA/ygKIxGYJ+4n0+JnA++f+b5jHz//4mATUDn+OD35fm+Y38////kAOFBAEQhjLLdYSi1YGAGAL1tKcUL/gNhwRcAAAvgAGV8pUdZgCYHGCBgCZAmH5gMwD3fRNT9/Sf/85DE3ZNGNOQBLdgAxETjAcwMMDTAcwXJQJTfNIjOqDF8i5HN80uv/wQBAAAECREBJjRVN5HNY3nM7jOpDOczJ4zqA0fMySNGH/vQBAAAIICBFJGBZiQgAD2K+pKP////5N/mxuJyMb9iTnxyJHnZJNJCCgUGBQCjhCkFEOQkYY4rQ//qHdnGBgCAJoQoJgwdQ4GhQAJigz////OQBOGEAG2tEJCkqoYh/qDHQ5iKKPElBpHJHJTjGQcCOdqkB5i4OUYFBgRgA4IahfnHBRg//+QxN2WAHTcATqYAR5NwFpzH3w/yPyOpMOpL8n/JZOOf6wEQoOAQgJ7g8Mf/f4P+c3//8n//xP/CgkD8z7/3//8kCMAAQhBNJJHmJxEQPCgbZGxLEtZHHH///5DxJJzJJJJOJJJJGT/w4kJEAcOHyJJEgAAAqSoqkrROJETjQGcnGzYl/kzGYzGYy/jIrTKgKbdhjm3zJ//////85DE9IsNHNQBP0gBnJ/+P//+ZAAAD0uTJHOdHJkcjJJN5yT/8H/JP///4cSUkkkkkkk4k/8TiQABEQ4HBQCAAADSQaQaGRGJP/9Cov///5DVxrGsb//////Ef/84ASiWNRjGP//GRGJsSST/w4zGNCMVjGRkYmSGJDjG6wOJHJA0f///+HEgaNxEzMyMyYxIsC0bkR8Q0aFhSYBo2P/zkMTKiZjsygE/kACJkUNBiJn///4o8QCQSSTvGNxiZGQkmJkSSRxJI8Y0OJBmMZGJEQkAOdGSZDGcJ+JP/w4k/wfySokkOJ/w5JJLEggkj//k///5P/8D+TiT2BJNAkp4n//kwkckiSSRJMJP/w4ckSTjyQJJJJkkEkjwJJJOJJJI//4gkSST//9IEgyJIkjNgVv+aFNJIkD///+QxN6L5OzGCT+YALLJNHFH////////////HP/TUTQz+JJBpJJJJJJJJJzJJJUJJJDjQJpKJNJEowKP/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////85DFAQkQvJQBP5gAAAADSAAAAEpJJJiJJJJJJJJJOJJJJLBpBJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJIQU=",
       );
 
       // Track if sound is enabled
       this.soundEnabled = false;
 
       // Enable sound on first user interaction
-      const enableSound = () => {
+      this.enableSound = () => {
         if (!this.soundEnabled) {
           this.soundEnabled = true;
           console.log("Sound notifications enabled");
@@ -84,14 +153,17 @@ const Hooks = {
               this.audio.volume = 1;
               this.audio.pause();
               this.audio.currentTime = 0;
+              console.log("Audio context unlocked successfully");
             })
-            .catch(() => {});
+            .catch((error) => {
+              console.error("Failed to unlock audio context:", error);
+            });
         }
       };
 
       // Add click listener to enable sound
-      document.addEventListener("click", enableSound, { once: true });
-      document.addEventListener("keydown", enableSound, { once: true });
+      document.addEventListener("click", this.enableSound, { once: true });
+      document.addEventListener("keydown", this.enableSound, { once: true });
 
       // Handle the custom event from LiveView
       this.handleEvent("play-notification-sound", () => {
@@ -108,11 +180,37 @@ const Hooks = {
           .then(() => {
             console.log("Notification sound played successfully");
           })
-          .catch((e) => {
-            // Handle autoplay restrictions
-            console.log("Could not play notification sound:", e);
+          .catch((error) => {
+            console.error("Failed to play notification sound:", error);
           });
       });
+
+      // Handle enable sound event
+      this.handleEvent("enable-sound", () => {
+        console.log("Received enable-sound event");
+        // Enable sound through user interaction
+        this.enableSound();
+        // Play a test sound to confirm it's working
+        this.audio.volume = 0.5;
+        this.audio
+          .play()
+          .then(() => {
+            console.log("Test sound played successfully");
+            this.audio.pause();
+            this.audio.currentTime = 0;
+            this.audio.volume = 1;
+          })
+          .catch((error) => {
+            console.error("Failed to play test sound:", error);
+          });
+      });
+    },
+
+    destroyed() {
+      console.log("NotificationSound hook destroyed");
+      // Clean up event listeners
+      document.removeEventListener("click", this.enableSound);
+      document.removeEventListener("keydown", this.enableSound);
     },
   },
 };
@@ -152,6 +250,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,
 });
 
+// Expose liveSocket globally for debugging
+window.liveSocket = liveSocket;
+
 /**
  * Progress Bar Configuration
  * Shows loading indicator during page transitions and form submissions
@@ -170,6 +271,29 @@ window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
  * Initiates WebSocket connection if LiveView components are present
  */
 liveSocket.connect();
+
+// Log connection status
+console.log("LiveSocket: Attempting to connect...");
+
+// Monitor connection status
+liveSocket.socket.onOpen(() => {
+  console.log("LiveSocket: WebSocket connection opened successfully!");
+  console.log(`LiveSocket: Connected = ${liveSocket.isConnected()}`);
+});
+
+liveSocket.socket.onError((e) => {
+  console.error("LiveSocket: WebSocket connection error:", e);
+});
+
+liveSocket.socket.onClose((e) => {
+  console.warn("LiveSocket: WebSocket connection closed:", e);
+});
+
+// Enable debug logging in development
+if (window.location.hostname === "localhost") {
+  liveSocket.enableDebug();
+  console.log("LiveSocket: Debug mode enabled");
+}
 
 /**
  * Debug Tools

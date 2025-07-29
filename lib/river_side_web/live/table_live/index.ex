@@ -141,7 +141,7 @@ defmodule RiverSideWeb.TableLive.Index do
               </ul>
             </div>
           <% else %>
-            <.link href={~p"/users/log-in"} class="btn btn-primary">Log in</.link>
+            <.link href={~p"/users/log-in"} class="btn btn-primary">Staff</.link>
           <% end %>
         </div>
       </div>

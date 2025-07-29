@@ -277,6 +277,17 @@ defmodule RiverSide.Accounts.UserNotifier do
             ⏰ This magic link will expire in 10 minutes for your security
           </div>
 
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 20px;">
+            <p style="font-size: 14px; color: #374151; margin: 0 0 10px 0;">
+              <strong>💡 Tip:</strong> If this link opens in your email app instead of your browser:
+            </p>
+            <ol style="font-size: 14px; color: #374151; margin: 5px 0 0 20px; padding-left: 0;">
+              <li>Long press the button above</li>
+              <li>Select "Copy link address"</li>
+              <li>Open your web browser and paste the link</li>
+            </ol>
+          </div>
+
           <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">
             If you didn't request this login link, you can safely ignore this email.
           </p>
@@ -317,6 +328,17 @@ defmodule RiverSide.Accounts.UserNotifier do
 
           <div class="expires">
             ⏰ This link will expire in 24 hours
+          </div>
+
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 20px;">
+            <p style="font-size: 14px; color: #374151; margin: 0 0 10px 0;">
+              <strong>💡 Tip:</strong> If this link opens in your email app instead of your browser:
+            </p>
+            <ol style="font-size: 14px; color: #374151; margin: 5px 0 0 20px; padding-left: 0;">
+              <li>Long press the button above</li>
+              <li>Select "Copy link address"</li>
+              <li>Open your web browser and paste the link</li>
+            </ol>
           </div>
 
           <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">

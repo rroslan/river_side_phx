@@ -57,9 +57,15 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-base-200">
+    <div class="min-h-screen bg-base-200" id="vendor-dashboard" phx-hook="VendorDashboard">
       <!-- Hidden element for notification sound hook -->
       <div id="notification-sound-hook" phx-hook="NotificationSound"></div>
+      <!-- Debug info (remove in production) -->
+      <!-- Debug info for real-time updates -->
+      <div class="fixed bottom-4 right-4 bg-base-300 p-2 rounded shadow-lg text-xs opacity-50">
+        Last update: {Calendar.strftime(@last_update || DateTime.utc_now(), "%H:%M:%S")}
+        <br />Active orders: {length(@active_orders)}
+      </div>
       <!-- Navigation -->
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
@@ -135,8 +141,29 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
             </ul>
           </div>
         </div>
+        <!-- Sound Enable Button (for browser autoplay policy) -->
+        <button
+          class="btn btn-circle btn-sm btn-ghost"
+          phx-click="enable_sound"
+          title="Enable notification sounds"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+            />
+          </svg>
+        </button>
       </div>
-
+      ```
       <%= if @vendor do %>
         <div class="container mx-auto p-6">
           <!-- Flash Messages -->
@@ -785,7 +812,8 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
        |> assign(active_orders: active_orders)
        |> assign(completed_orders: completed_orders)
        |> assign(sales_stats: sales_stats)
-       |> assign(active_tab: "orders")}
+       |> assign(active_tab: "orders")
+       |> assign(last_update: DateTime.utc_now())}
     else
       # Create a default vendor profile
       case Vendors.create_vendor(%{
@@ -910,6 +938,11 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
   end
 
   @impl true
+  def handle_event("enable_sound", _params, socket) do
+    {:noreply, push_event(socket, "enable-sound", %{})}
+  end
+
+  @impl true
   def handle_event("edit_menu_item", %{"id" => id}, socket) do
     {:noreply, push_navigate(socket, to: ~p"/vendor/menu/#{id}/edit")}
   end
@@ -931,6 +964,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     # Only process if this order is for our vendor
     if order.vendor_id == socket.assigns.vendor.id do
       Logger.info("Vendor Dashboard: Processing order update for our vendor")
+
+      # Get current active orders count for comparison
+      current_count = length(socket.assigns.active_orders)
+      Logger.info("Vendor Dashboard: Current active orders count: #{current_count}")
     else
       Logger.info("Vendor Dashboard: Ignoring order update for different vendor")
     end
@@ -941,6 +978,10 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     Logger.info(
       "Vendor Dashboard: Refreshed active orders list, now have #{length(active_orders)} active orders"
     )
+
+    # Log order IDs for debugging
+    order_ids = Enum.map(active_orders, & &1.id) |> Enum.join(", ")
+    Logger.info("Vendor Dashboard: Active order IDs: [#{order_ids}]")
 
     completed_orders =
       Vendors.list_todays_orders(socket.assigns.vendor.id)
@@ -959,16 +1000,29 @@ defmodule RiverSideWeb.VendorLive.Dashboard do
     # Push event to play sound if it's a new order
     final_socket =
       if should_play_sound do
+        Logger.info("Vendor Dashboard: Pushing play-notification-sound event")
         push_event(flash_socket, "play-notification-sound", %{})
       else
         flash_socket
       end
 
+    # Force UI update by updating a timestamp
+    now = DateTime.utc_now()
+
+    # Log the socket assigns for debugging
+    Logger.info("Vendor Dashboard: Socket ID: #{inspect(socket.id)}")
+    Logger.info("Vendor Dashboard: Connected?: #{connected?(socket)}")
+
     {:noreply,
      final_socket
      |> assign(active_orders: active_orders)
      |> assign(completed_orders: completed_orders)
-     |> assign(sales_stats: sales_stats)}
+     |> assign(sales_stats: sales_stats)
+     |> assign(last_update: now)
+     |> push_event("debug-update", %{
+       order_count: length(active_orders),
+       timestamp: DateTime.to_iso8601(now)
+     })}
   end
 
   defp format_currency(decimal) do
