@@ -30,16 +30,10 @@ if config_env() == :prod do
 
   # Mailer configuration for production
   # Using Resend as the email service
-  resend_api_key = System.get_env("RESEND_API_KEY")
 
-  if resend_api_key do
-    config :river_side, RiverSide.Mailer,
-      adapter: Swoosh.Adapters.Resend,
-      api_key: resend_api_key
-  else
-    # Fallback to local adapter if no API key is set
-    config :river_side, RiverSide.Mailer, adapter: Swoosh.Adapters.Local
-  end
+  config :river_side, RiverSide.Mailer,
+    adapter: Resend.Swoosh.Adapter,
+    api_key: System.fetch_env!("RESEND_API_KEY")
 
   config :swoosh, :api_client, Swoosh.ApiClient.Finch
 

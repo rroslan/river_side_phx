@@ -9,7 +9,7 @@ defmodule RiverSide.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"River Side Food Court", "noreply@applikasi.tech"})
+      |> from({"River Side Food Court", "noreply@riverside.applikasi.tech"})
       |> subject(subject)
       |> html_body(html_body)
 
