@@ -9,13 +9,13 @@ We are excited to announce the first stable release of River Side Food Court, a 
 - **Complete Food Court Solution**: Manage multiple vendors, orders, and payments in one integrated system
 - **Real-time Everything**: Live order updates, instant notifications, and real-time dashboards
 - **Mobile-First Design**: Fully responsive interface optimized for all devices
-- **No Registration Required**: Customers can order using QR codes without creating accounts
+- **No Registration Required**: Customers can order without creating accounts
 - **Comprehensive Reporting**: Full business insights with charts, analytics, and data export
 
 ### 🚀 Key Features
 
 #### For Customers
-- Scan QR code at your table to start ordering
+- Start ordering by entering your table number
 - Browse menus from all vendors in one place
 - Track your order status in real-time
 - No app download or registration needed
@@ -71,6 +71,7 @@ No critical issues in this release. Minor style improvements suggested by code a
 ### 🔮 What's Next
 
 Future releases may include:
+- QR code table ordering system
 - PDF export for reports
 - Email/SMS notifications for order updates
 - Multi-language support

@@ -31,11 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vendor dashboard with order analytics
 
 #### Customer Experience
-- **QR code table ordering** system
 - Browse menus from multiple vendors
 - Shopping cart with multi-vendor support
 - Real-time order status updates
 - Session-based ordering (no registration required)
+- Table-based ordering system
 - Mobile-responsive design
 
 #### Order Management
