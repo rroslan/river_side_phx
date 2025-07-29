@@ -271,7 +271,7 @@ IO.puts("✅ Initialized #{count} tables")
 IO.puts("\nCreating sample orders for testing...")
 
 # Sample order 1 - Food order
-{:ok, table1} = Tables.get_table_by_number(1)
+table1 = Tables.get_table_by_number(1)
 
 {:ok, _occupied_table1} =
   Tables.occupy_table(table1, %{customer_name: "John Doe", customer_phone: "0123456789"})
@@ -299,7 +299,7 @@ order_attrs = %{
 IO.puts("✅ Created sample food order ##{order1.order_number}")
 
 # Sample order 2 - Drinks order
-{:ok, table2} = Tables.get_table_by_number(2)
+table2 = Tables.get_table_by_number(2)
 
 {:ok, _occupied_table2} =
   Tables.occupy_table(table2, %{customer_name: "Jane Smith", customer_phone: "0198765432"})
