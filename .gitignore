@@ -68,3 +68,6 @@ Thumbs.db
 # Uploaded files (keep directory structure but not files)
 /priv/static/uploads/*
 !/priv/static/uploads/.gitkeep
+
+# Ignore audio/video test artifacts
+priv/static/test_sound*.html*
