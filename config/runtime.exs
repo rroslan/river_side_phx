@@ -88,7 +88,7 @@ if config_env() == :prod do
 
   # Configure upload directory for production
   uploads_dir = System.get_env("UPLOADS_DIR") || "/var/www/river_side/images"
-  File.mkdir_p!(uploads_dir)
+  #File.mkdir_p!(uploads_dir)
 
   config :river_side, :uploads_dir, uploads_dir
 
