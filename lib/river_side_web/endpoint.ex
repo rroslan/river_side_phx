@@ -26,6 +26,11 @@ defmodule RiverSideWeb.Endpoint do
     gzip: not code_reloading?,
     only: RiverSideWeb.static_paths()
 
+  plug Plug.Static,
+    at: "/uploads",
+    from: {RiverSideWeb.Helpers.UploadHelper, :uploads_dir, []},
+    gzip: false
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do

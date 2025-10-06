@@ -40,7 +40,6 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import { hooks as colocatedHooks } from "phoenix-colocated/river_side";
 import topbar from "../vendor/topbar";
-import ImageCropper from "./image_cropper";
 
 /**
  * CSRF Token for Security
@@ -58,7 +57,6 @@ const csrfToken = document
  */
 const Hooks = {
   ...colocatedHooks,
-  ImageCropper: ImageCropper,
   ReportsDownload: {
     mounted() {
       this.handleEvent("download", ({ filename, content, type }) => {

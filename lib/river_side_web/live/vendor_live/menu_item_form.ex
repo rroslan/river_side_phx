@@ -1,13 +1,21 @@
 defmodule RiverSideWeb.VendorLive.MenuItemForm do
   use RiverSideWeb, :live_view
 
+  alias Phoenix.LiveView.JS
   alias RiverSide.Vendors
   alias RiverSide.Vendors.MenuItem
+  alias RiverSideWeb.Helpers.UploadHelper
+
+  @upload_opts [
+    accept: ~w(.jpg .jpeg .png .gif .webp),
+    max_entries: 1,
+    max_file_size: 10_000_000
+  ]
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-base-200" id="menu-item-form" phx-hook="ImageCropper">
+    <div class="min-h-screen bg-base-200" id="menu-item-form">
       <div class="navbar bg-base-300 shadow-lg">
         <div class="flex-1">
           <h1 class="text-2xl font-bold text-base-content px-4">
@@ -103,9 +111,8 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                 <label class="label">
                   <span class="label-text">Image Upload</span>
                 </label>
-                
-    <!-- Current Image -->
-                <%= if @menu_item.image_url && @live_action == :edit && !@cropped_image do %>
+
+                <%= if @menu_item.image_url && @live_action == :edit && !@remove_image && Enum.empty?(@uploads.image.entries) do %>
                   <div class="mb-4">
                     <p class="text-sm text-base-content/70 mb-2">Current image:</p>
                     <img
@@ -114,13 +121,6 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                       class="w-32 h-32 object-cover rounded-lg"
                     />
                     <div class="flex gap-2 mt-2">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-ghost"
-                        onclick="document.getElementById('image-file-input').click()"
-                      >
-                        Change Image
-                      </button>
                       <button
                         type="button"
                         class="btn btn-sm btn-error btn-outline"
@@ -132,96 +132,71 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
                     </div>
                   </div>
                 <% end %>
-                
-    <!-- Image Cropper Container -->
-                <div data-cropper-container class="mb-4">
-                  <input
-                    type="file"
-                    data-image-input
-                    accept="image/*"
-                    class="hidden"
-                    id="image-file-input"
-                  />
-                  <canvas data-crop-canvas class="w-full border-2 border-base-300 rounded-lg hidden"></canvas>
-                  
-    <!-- Crop Controls -->
-                  <div data-crop-controls class="hidden mt-4 space-y-4">
-                    <div class="flex gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        class="btn btn-sm"
-                        phx-click="change_aspect_ratio"
-                        phx-value-ratio="1"
-                      >
-                        Square (1:1)
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm"
-                        phx-click="change_aspect_ratio"
-                        phx-value-ratio="1.5"
-                      >
-                        Wide (3:2)
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-sm"
-                        phx-click="change_aspect_ratio"
-                        phx-value-ratio="0.75"
-                      >
-                        Tall (3:4)
-                      </button>
-                    </div>
-                    <button type="button" data-crop-button class="btn btn-primary btn-sm">
-                      Crop & Use Image
-                    </button>
-                  </div>
-                  
-    <!-- Cropped Preview -->
-                  <div :if={@cropped_image} class="mt-4">
-                    <p class="text-sm text-base-content/70 mb-2">Preview:</p>
-                    <img
-                      src={@cropped_image}
-                      alt="Cropped preview"
-                      class="w-32 h-32 object-cover rounded-lg"
-                    />
-                  </div>
-                </div>
-                
-    <!-- Upload Section -->
+
+                <%= if @remove_image do %>
+                  <p class="text-sm text-warning mb-2">
+                    The current image will be removed when you save.
+                  </p>
+                <% end %>
+
                 <div class="space-y-4">
                   <div
-                    class="border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                    onclick="document.getElementById('image-file-input').click()"
+                    class="relative border-2 border-dashed border-base-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
+                    phx-drop-target={@uploads.image.ref}
+                    phx-click={JS.dispatch("click", to: "#menu-item-image-input")}
                   >
-                    <label for="image-file-input" class="cursor-pointer">
-                      <svg
-                        class="mx-auto h-12 w-12 text-base-content/50"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                      <p class="mt-2 text-sm">
-                        <span class="font-medium text-primary">
-                          {if @live_action == :edit && @menu_item.image_url && !@cropped_image,
-                            do: "Click to change image",
-                            else: "Click to upload"}
-                        </span>
-                      </p>
-                      <p class="text-xs text-base-content/50">PNG, JPG, GIF up to 10MB</p>
-                      <p class="text-xs text-warning mt-2">
-                        Images will be cropped to fit menu display
-                      </p>
-                    </label>
+                    <svg
+                      class="mx-auto h-12 w-12 text-base-content/50"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <p class="mt-2 text-sm">
+                      <span class="font-medium text-primary">
+                        {if Enum.empty?(@uploads.image.entries),
+                          do: "Click or drag to upload",
+                          else: "Add a different image"}
+                      </span>
+                    </p>
+                    <p class="text-xs text-base-content/50">PNG, JPG, GIF, or WEBP up to 10MB</p>
+                    <.live_file_input
+                      upload={@uploads.image}
+                      id="menu-item-image-input"
+                      class="file-input file-input-bordered absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      aria-label="Upload menu item image"
+                    />
                   </div>
+
+                  <%= for entry <- @uploads.image.entries do %>
+                    <div class="border rounded-lg p-4 flex items-center gap-4">
+                      <.live_img_preview entry={entry} class="w-20 h-20 object-cover rounded" />
+                      <div class="flex-1">
+                        <p class="font-medium text-sm">{entry.client_name}</p>
+                        <progress
+                          class="progress progress-primary w-full mt-2"
+                          max="100"
+                          value={entry.progress}
+                        >
+                        </progress>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        phx-click="cancel-upload"
+                        phx-value-ref={entry.ref}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  <% end %>
                 </div>
               </div>
 
@@ -259,7 +234,10 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
 
       if vendor do
         {:ok,
-         socket |> assign(vendor: vendor) |> apply_action(socket.assigns.live_action, params)}
+         socket
+         |> assign(vendor: vendor)
+         |> allow_upload(:image, @upload_opts)
+         |> apply_action(socket.assigns.live_action, params)}
       else
         {:ok,
          socket
@@ -280,8 +258,6 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
     socket
     |> assign(:menu_item, %MenuItem{})
     |> assign(:form, to_form(changeset))
-    |> assign(:cropped_image, nil)
-    |> assign(:temp_image_path, nil)
     |> assign(:remove_image, false)
   end
 
@@ -294,8 +270,6 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
       socket
       |> assign(:menu_item, menu_item)
       |> assign(:form, to_form(changeset))
-      |> assign(:cropped_image, nil)
-      |> assign(:temp_image_path, nil)
       |> assign(:remove_image, false)
     else
       socket
@@ -320,76 +294,73 @@ defmodule RiverSideWeb.VendorLive.MenuItemForm do
   end
 
   @impl true
-  def handle_event("change_aspect_ratio", %{"ratio" => ratio}, socket) do
-    {:noreply, push_event(socket, "change_aspect_ratio", %{ratio: String.to_float(ratio)})}
-  end
-
-  @impl true
-  def handle_event("image_loaded", %{"width" => _width, "height" => _height}, socket) do
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event(
-        "image_cropped",
-        %{"data" => data_url, "width" => width, "height" => height},
-        socket
-      ) do
-    # Extract base64 data
-    "data:image/" <> rest = data_url
-    [_type, base64_data] = String.split(rest, ";base64,", parts: 2)
-
-    # Generate filename
-    timestamp = System.system_time(:second)
-    filename = "menu_item_#{timestamp}_#{width}x#{height}.jpg"
-
-    # Save to uploads directory
-    uploads_dir = Path.join([:code.priv_dir(:river_side), "static", "uploads"])
-    File.mkdir_p!(uploads_dir)
-
-    dest_path = Path.join(uploads_dir, filename)
-    File.write!(dest_path, Base.decode64!(base64_data))
-
-    {:noreply,
-     socket
-     |> assign(:cropped_image, ~p"/uploads/#{filename}")
-     |> assign(:temp_image_path, ~p"/uploads/#{filename}")
-     |> push_event("reset_file_input", %{})}
-  end
-
-  @impl true
   def handle_event("remove_image", _params, socket) do
-    # For edit mode, clear the current image
-    if socket.assigns.live_action == :edit do
-      {:noreply,
-       socket
-       |> assign(:menu_item, %{socket.assigns.menu_item | image_url: nil})
-       |> assign(:cropped_image, nil)
-       |> assign(:temp_image_path, nil)
-       |> assign(:remove_image, true)
-       |> push_event("reset_file_input", %{})}
-    else
-      {:noreply, socket}
-    end
+    {:noreply, assign(socket, :remove_image, true)}
   end
 
   @impl true
   def handle_event("save", %{"menu_item" => menu_item_params}, socket) do
-    menu_item_params =
-      cond do
-        socket.assigns[:remove_image] ->
-          Map.put(menu_item_params, "image_url", nil)
+    case attach_uploaded_image(socket, menu_item_params) do
+      {:ok, updated_params, remove_flag} ->
+        updated_params = Map.put(updated_params, "vendor_id", socket.assigns.vendor.id)
+        socket = assign(socket, :remove_image, remove_flag)
+        save_menu_item(socket, socket.assigns.live_action, updated_params)
 
-        socket.assigns.temp_image_path ->
-          Map.put(menu_item_params, "image_url", socket.assigns.temp_image_path)
+      {:error, messages} ->
+        changeset =
+          socket.assigns.menu_item
+          |> Vendors.change_menu_item(menu_item_params)
+          |> Map.put(:action, :validate)
 
-        true ->
-          menu_item_params
-      end
-
-    menu_item_params = Map.put(menu_item_params, "vendor_id", socket.assigns.vendor.id)
-    save_menu_item(socket, socket.assigns.live_action, menu_item_params)
+        {:noreply,
+         socket
+         |> put_flash(:error, Enum.join(messages, ". "))
+         |> assign(:form, to_form(changeset))}
+    end
   end
+
+  defp attach_uploaded_image(socket, params) do
+    {paths, errors} =
+      consume_uploaded_entries(socket, :image, fn %{path: path}, entry ->
+        filename = UploadHelper.generate_unique_filename(entry.client_name)
+
+        case UploadHelper.process_upload(path, filename,
+               allowed_extensions: @upload_opts[:accept],
+               max_size: @upload_opts[:max_file_size],
+               subdirectory: "menu_items"
+             ) do
+          {:ok, %{public_path: public_path}} -> {:ok, {:ok, public_path}}
+          {:error, reason} -> {:ok, {:error, reason}}
+        end
+      end)
+      |> Enum.reduce({[], []}, fn
+        {:ok, path}, {paths, errors} -> {[path | paths], errors}
+        {:error, reason}, {paths, errors} -> {paths, [reason | errors]}
+      end)
+
+    paths = Enum.reverse(paths)
+    errors = Enum.reverse(errors)
+
+    cond do
+      errors != [] ->
+        {:error, Enum.map(errors, &upload_error_message/1)}
+
+      paths != [] ->
+        {:ok, Map.put(params, "image_url", hd(paths)), false}
+
+      socket.assigns[:remove_image] ->
+        {:ok, Map.put(params, "image_url", nil), true}
+
+      true ->
+        {:ok, params, false}
+    end
+  end
+
+  defp upload_error_message(:file_not_found), do: "Uploaded file could not be read"
+  defp upload_error_message(:file_too_large), do: "Image exceeds the 10MB size limit"
+  defp upload_error_message(:invalid_file), do: "Invalid image file"
+  defp upload_error_message(:invalid_path), do: "Upload path is invalid"
+  defp upload_error_message(reason), do: "Image upload failed: #{inspect(reason)}"
 
   defp save_menu_item(socket, :new, menu_item_params) do
     case Vendors.create_menu_item(menu_item_params) do

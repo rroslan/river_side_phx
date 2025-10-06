@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Notification Sound</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            min-height: 200px;
+            white-space: pre-wrap;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Test Notification Sound</h1>
+
+    <p>This page tests the notification sound used in the River Side Food Court vendor dashboard.</p>
+
+    <button onclick="playNotificationSound()">Play Notification Sound</button>
+    <button onclick="testAudioContext()">Test Audio Context</button>
+    <button onclick="playSimpleBeep()">Play Simple Beep</button>
+    <button onclick="clearLog()">Clear Log</button>
+
+    <div id="log" class="log"></div>
+
+    <script>
+        // The same audio data from the app
+        const notificationSoundData = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAJAAAJcABCQkJCQkJCQkJCXl5eXl5eXl5eXnp6enp6enp6enqVlZWVlZWVlZWVsbGxsbGxsbGxsc3Nzc3Nzc3Nzc3p6enp6enp6enp//////////////////8AAAA5TEFNRTMuOThyAaUAAAAALCQAABRGJAILQgAARgAACXC8w0MJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAAOUx1TOa2YgDAAADSAAAAEYFQAfQJfj/AgCAIAgGHluTkxAAQ/KBjwQMH/6BVVVVW//VVVd6oFVVWBVVf/qq3qgVVVYFX//6qr1QAAoGAgGP//h/4IIECAR/BA8H//4nE5xPEZxOcRAoFEwGA4HA/ygKIxGYJ+4n0+JnA++f+b5jHz//4mATUDn+OD35fm+Y38////kAOFBAEQhjLLdYSi1YGAGAL1tKcUL/gNhwRcAAAvgAGV8pUdZgCYHGCBgCZAmH5gMwD3fRNT9/Sf/85DE3ZNGNOQBLdgAxETjAcwMMDTAcwXJQJTfNIjOqDF8i5HN80uv/wQBAAAECREBJjRVN5HNY3nM7jOpDOczJ4zqA0fMySNGH/vQBAAAIICBFJGBZiQgAD2K+pKP////5N/mxuJyMb9iTnxyJHnZJNJCCgUGBQCjhCkFEOQkYY4rQ//qHdnGBgCAJoQoJgwdQ4GhQAJigz////OQBOGEAG2tEJCkqoYh/qDHQ5iKKPElBpHJHJTjGQcCOdqkB5i4OUYFBgRgA4IahfnHBRg//+QxN2WAHTcATqYAR5NwFpzH3w/yPyOpMOpL8n/JZOOf6wEQoOAQgJ7g8Mf/f4P+c3//8n//xP/CgkD8z7/3//8kCMAAQhBNJJHmJxEQPCgbZGxLEtZHHH///5DxJJzJJJJOJJJJGT/w4kJEAcOHyJJEgAAAqSoqkrROJETjQGcnGzYl/kzGYzGYy/jIrTKgKbdhjm3zJ//////85DE9IsNHNQBP0gBnJ/+P//+ZAAAD0uTJHOdHJkcjJJN5yT/8H/JP///4cSUkkkkkkk4k/8TiQABEQ4HBQCAAADSQaQaGRGJP/9Cov///5DVxrGsb//////Ef/84ASiWNRjGP//GRGJsSST/w4zGNCMVjGRkYmSGJDjG6wOJHJA0f///+HEgaNxEzMyMyYxIsC0bkR8Q0aFhSYBo2P/zkMTKiZjsygE/kACJkUNBiJn///4o8QCQSSTvGNxiZGQkmJkSSRxJI8Y0OJBmMZGJEQkAOdGSZDGcJ+JP/w4k/wfySokkOJ/w5JJLEggkj//k///5P/8D+TiT2BJNAkp4n//kwkckiSSRJMJP/w4ckSTjyQJJJJkkEkjwJJJOJJJI//4gkSST//9IEgyJIkjNgVv+aFNJIkD///+QxN6L5OzGCT+YALLJNHFH////////////HP/TUTQz+JJBpJJJJJJJJJzJJJUJJJDjQJpKJNJEowKP/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////85DFAQkQvJQBP5gAAAADSAAAAEpJJJiJJJJJJJJJOJJJJLBpBJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJIQU=";
+
+        let audio = null;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared');
+        }
+
+        function playNotificationSound() {
+            try {
+                log('Creating audio element with notification sound data...');
+                audio = new Audio(notificationSoundData);
+
+                log('Attempting to play notification sound...');
+                audio.play()
+                    .then(() => {
+                        log('Notification sound played successfully!', 'success');
+                    })
+                    .catch((error) => {
+                        log(`Failed to play notification sound: ${error.name} - ${error.message}`, 'error');
+                        if (error.name === 'NotAllowedError') {
+                            log('Browser requires user interaction. Click the button again.', 'error');
+                        }
+                    });
+            } catch (error) {
+                log(`Error creating audio: ${error.message}`, 'error');
+            }
+        }
+
+        function testAudioContext() {
+            try {
+                log('Testing AudioContext...');
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                log(`AudioContext state: ${audioContext.state}`);
+
+                if (audioContext.state === 'suspended') {
+                    log('AudioContext is suspended. Attempting to resume...');
+                    audioContext.resume().then(() => {
+                        log('AudioContext resumed successfully!', 'success');
+                    }).catch(err => {
+                        log(`Failed to resume AudioContext: ${err.message}`, 'error');
+                    });
+                } else {
+                    log('AudioContext is already running', 'success');
+                }
+            } catch (error) {
+                log(`Error with AudioContext: ${error.message}`, 'error');
+            }
+        }
+
+        function playSimpleBeep() {
+            try {
+                log('Creating simple beep using Web Audio API...');
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 800; // 800 Hz
+                gainNode.gain.value = 0.1; // Low volume
+
+                oscillator.start();
+                log('Playing 800Hz beep for 200ms...', 'success');
+
+                setTimeout(() => {
+                    oscillator.stop();
+                    log('Beep stopped');
+                }, 200);
+
+            } catch (error) {
+                log(`Error playing beep: ${error.message}`, 'error');
+            }
+        }
+
+        // Test on page load
+        window.addEventListener('load', () => {
+            log('Page loaded. Click a button to test sounds.');
+            log('Note: Modern browsers require user interaction before playing sounds.');
+        });
+    </script>
+</body>
+</html>

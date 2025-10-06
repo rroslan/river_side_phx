@@ -5,6 +5,36 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
   """
 
   @doc """
+  Returns the default upload directory within the release.
+  """
+  def default_upload_dir do
+    :river_side
+    |> Application.app_dir("priv/static/uploads")
+    |> to_string()
+  end
+
+  @doc """
+  Returns the configured uploads directory or falls back to the default.
+  """
+  def uploads_dir do
+    Application.get_env(:river_side, :uploads_dir, default_upload_dir())
+  end
+
+  @doc """
+  Builds the public path clients can use to access an uploaded file.
+  """
+  def public_upload_path(filename, subdirectory \\ nil) do
+    segments =
+      case subdirectory do
+        nil -> ["uploads"]
+        subdir -> ["uploads", sanitize_subdirectory(subdir)]
+      end
+
+    full_segments = segments ++ [sanitize_filename(filename)]
+    "/" <> Path.join(full_segments)
+  end
+
+  @doc """
   Sanitizes a filename to prevent directory traversal and other security issues.
 
   ## Examples
@@ -76,12 +106,11 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
   Prevents directory traversal by ensuring the path stays within bounds.
   """
   def safe_upload_path(filename, subdirectory \\ nil) do
-    base_path = Path.join([:code.priv_dir(:river_side), "static", "uploads"])
+    base_path = uploads_dir()
 
     safe_path =
       if subdirectory do
-        sanitized_subdir = subdirectory |> to_string() |> Path.basename()
-        Path.join([base_path, sanitized_subdir, sanitize_filename(filename)])
+        Path.join([base_path, sanitize_subdirectory(subdirectory), sanitize_filename(filename)])
       else
         Path.join(base_path, sanitize_filename(filename))
       end
@@ -101,12 +130,11 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
   Ensures upload directory exists with proper permissions.
   """
   def ensure_upload_directory!(subdirectory \\ nil) do
-    base_path = Path.join([:code.priv_dir(:river_side), "static", "uploads"])
+    base_path = uploads_dir()
 
     dir_path =
       if subdirectory do
-        sanitized_subdir = subdirectory |> to_string() |> Path.basename()
-        Path.join(base_path, sanitized_subdir)
+        Path.join(base_path, sanitize_subdirectory(subdirectory))
       else
         base_path
       end
@@ -116,7 +144,7 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
   end
 
   @doc """
-  Validates and processes an upload, returning the safe path or an error.
+  Validates and processes an upload, returning both disk and public paths or an error.
   """
   def process_upload(upload_path, destination_filename, opts \\ []) do
     allowed_extensions = Keyword.get(opts, :allowed_extensions, ~w(.jpg .jpeg .png .gif .webp))
@@ -128,7 +156,13 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
          {:ok, safe_path} <- safe_upload_path(destination_filename, subdirectory),
          :ok <- ensure_upload_directory!(subdirectory) |> then(fn _ -> :ok end),
          :ok <- File.cp(upload_path, safe_path) do
-      {:ok, safe_path}
+      filename = Path.basename(safe_path)
+
+      {:ok,
+       %{
+         disk_path: safe_path,
+         public_path: public_upload_path(filename, subdirectory)
+       }}
     else
       {:error, reason} -> {:error, reason}
       _ -> {:error, :upload_failed}
@@ -146,5 +180,12 @@ defmodule RiverSideWeb.Helpers.UploadHelper do
       %{size: size} when size > max_size -> {:error, :file_too_large}
       _ -> {:error, :invalid_file}
     end
+  end
+
+  defp sanitize_subdirectory(subdirectory) do
+    subdirectory
+    |> to_string()
+    |> Path.basename()
+    |> String.replace(~r/[^a-zA-Z0-9._-]/, "_")
   end
 end

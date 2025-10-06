@@ -2,6 +2,7 @@ defmodule RiverSideWeb.VendorLive.ProfileEdit do
   use RiverSideWeb, :live_view
 
   alias RiverSide.Vendors
+  alias RiverSideWeb.Helpers.UploadHelper
 
   @impl true
   def render(assigns) do
@@ -255,9 +256,16 @@ defmodule RiverSideWeb.VendorLive.ProfileEdit do
   def handle_event("save", %{"vendor" => vendor_params}, socket) do
     uploaded_files =
       consume_uploaded_entries(socket, :logo, fn %{path: path}, entry ->
-        dest = Path.join([:code.priv_dir(:river_side), "static", "uploads", entry.client_name])
-        File.cp!(path, dest)
-        {:ok, ~p"/uploads/#{entry.client_name}"}
+        filename = UploadHelper.generate_unique_filename(entry.client_name)
+
+        case UploadHelper.process_upload(path, filename,
+               allowed_extensions: ~w(.jpg .jpeg .png .gif),
+               max_size: 10_000_000,
+               subdirectory: "vendor_logos"
+             ) do
+          {:ok, %{public_path: public_path}} -> {:ok, public_path}
+          {:error, reason} -> {:error, reason}
+        end
       end)
 
     vendor_params =
